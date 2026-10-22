@@ -15,6 +15,7 @@
 <meta name="apple-mobile-web-app-title" content="HYBRIX Clases">
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
@@ -331,11 +332,12 @@ const MOVES = {
   db:[{t:'Farmers carry',u:'m',r:[20,30,40],st:10,load:'db'},{t:'Devil press',u:'reps',r:[5,6,8],st:1,load:'db'},{t:'Thrusters con mancuernas',u:'reps',r:[8,10,12],st:1,load:'db'},{t:'Snatch alternado',u:'reps',r:[10,12,16],st:2,load:'db'}],
   bar:[{t:'Thrusters con barra',u:'reps',r:[8,10,12],st:1,load:'bar'},{t:'Deadlift',u:'reps',r:[8,10,12],st:1,load:'bar'},{t:'Front squat',u:'reps',r:[6,8,10],st:1,load:'bar'},{t:'Burpee sobre la barra',u:'reps',r:[6,8,10],st:1}],
   kb:[{t:'Swings',u:'reps',r:[12,15,20],st:1,load:'kb'},{t:'Goblet lunges',u:'reps',r:[10,12,16],st:2,load:'kb'},{t:'KB front rack carry',u:'m',r:[20,30,40],st:10,load:'kb'}],
+  bbj:[{t:'Burpee broad jumps',u:'m',r:[20,30,40],st:5},{t:'Burpees',u:'reps',r:[8,10,12],st:1},{t:'Burpees + walking lunges',u:'rondas de 5 burpees + 10 m de lunges',r:[2,3,4],st:1}],
   box:[{t:'Box step-overs',u:'reps',r:[10,12,16],st:2},{t:'Box jumps',u:'reps',r:[8,10,12],st:1}],
 };
 const SUP=[L=>`${[6,8,10][L]} burpees`,L=>`${[10,15,20][L]} air squats`,()=>'plancha alta',()=>'wall sit',L=>`${[6,8,12][L]} push-ups`,L=>`${[10,12,16][L]} lunges sin peso`,L=>`${[16,20,30][L]} mountain climbers`,()=>'hollow hold',L=>`${[4,6,8][L]} burpee broad jumps`,L=>`${[8,10,12][L]} sit-ups`];
 const FORM={p:['Tú-yo','Relevos','Por minuto','Acumulado'],i:['Series','EMOM','Intervalos','AMRAP','Escalera']};
-const SIM={run:[1000,'m de carrera'],ski:[1000,'m de SkiErg'],sled:[50,'m de sled push y la misma distancia de sled pull'],row:[1000,'m de remo'],db:[200,'m de farmers carry'],sb:[100,'m de sandbag lunges'],wb:[100,'wall balls (75 mujer Open)'],bike:[1000,'m de bici (sustituto de carrera)'],bar:[80,'m de burpee broad jumps'],kb:[80,'m de burpee broad jumps'],box:[80,'m de burpee broad jumps']};
+const SIM={run:[1000,'m de carrera'],ski:[1000,'m de SkiErg'],sled:[50,'m de sled push y la misma distancia de sled pull'],row:[1000,'m de remo'],db:[200,'m de farmers carry'],sb:[100,'m de sandbag lunges'],wb:[100,'wall balls (75 mujer Open)'],bike:[1000,'m de bici (sustituto de carrera)'],bbj:[80,'m de burpee broad jumps']};
 const SIMLOAD={sled:'sled',db:'db',sb:'sb',wb:'wb'};
 const SESS={hybrix:'HYBRIX · Warm up · Power · Workout',circuito:'Circuito de estaciones',compromised:'Compromised running',fuerza:'Fuerza-resistencia',motor:'Motor (EMOM / intervalos)',simulacion:'Simulación Hyrox'};
 function fmt(min){const m=Math.floor(min), sec=Math.round((min-m)*60); return sec?`${m}′${String(sec).padStart(2,'0')}″`:`${m}′`;}
@@ -349,10 +351,10 @@ function genEx(id,L,R,workMin){
   const sup=pick(R,SUP)(L); const what=`${r} ${mv.u}`;
   const load=mv.load?` Carga: ${LOAD[mv.load][L]}.`:'';
   const P=S.mode==='p';
-  if(ses==='simulacion'){
+  if(ses==='simulacion'&&SIM[id]){
     const [vol,lab]=SIM[id]; const sc=[0.25,0.5,1][L]; const v=Math.round(vol*sc/(vol>=100?10:5))*(vol>=100?10:5);
     const l=SIMLOAD[id]?` Carga: ${LOAD[SIMLOAD[id]][L]}.`:'';
-    return {t:{run:'Carrera',ski:'SkiErg',sled:'Sled push + pull',row:'Remo',db:'Farmers carry',sb:'Sandbag lunges',wb:'Wall balls',bike:'Bici',bar:'Burpee broad jumps',kb:'Burpee broad jumps',box:'Burpee broad jumps'}[id],f:'Simulación',
+    return {t:{run:'Carrera',ski:'SkiErg',sled:'Sled push + pull',row:'Remo',db:'Farmers carry',sb:'Sandbag lunges',wb:'Wall balls',bike:'Bici',bbj:'Burpee broad jumps'}[id],f:'Simulación',
       txt:`Completen ${v} ${lab}${P?', repartidos entre la pareja como quieran':''}. Quien termine antes hace ${sup} hasta el silbatazo.${l}`};
   }
   if(ses==='compromised'){
@@ -384,6 +386,7 @@ function genEx(id,L,R,workMin){
 }
 const FINISH=[L=>`${[30,40,50][L]} wall balls por tiempo`,L=>`${[40,60,80][L]} m de burpee broad jumps`,L=>`Benchmark: ${[500,800,1000][L]} m de carrera + ${[30,40,50][L]} wall balls + ${[500,800,1000][L]} m de carrera. Anoten la diferencia entre las dos carreras`,L=>`3 rondas: ${[10,15,20][L]} wall balls + ${[5,8,10][L]} burpee broad jumps`];
 const FILL = {bike:'burpee broad jumps', sled:'lunges sin peso + plancha', default:'burpee broad jumps'};
+const FLOOR={id:'bbj', n:'Piso libre', h:'sin equipo', ppu:{i:1,p:2}};
 const LETTERS='ABCDEFGHIJKLMNOPQRSTUVWX';
 
 const S = {mode:'p', dur:60, lvl:1, coaches:2, ratio:20, area:'', people:null, seed:1, sess:'hybrix', work:'auto', rest:1, names:'', gym:'HYBRIX', tagline:'OFFICIAL HYROX TRAINING CENTER', q:{}};
@@ -442,6 +445,7 @@ function buildStations(){
     const copies = e.split && c>=2*G ? 2 : 1;
     for(let k=0;k<copies;k++) list.push({e, q: copies>1? Math.floor(q/copies): q, c: copies>1? Math.floor(c/copies): c, v:k});
   });
+  list.push({e:FLOOR, q:'piso', c:G, v:0});
   return {G, list};
 }
 function capacity(){
@@ -456,19 +460,29 @@ function capacity(){
 }
 function plan(P, info){
   const {G,list}=info;
-  const gmin=S.mode==='p'?4:3;
-  let k=Math.min(list.length, Math.max(Math.ceil(P/G), Math.min(list.length, Math.floor(P/gmin))));
-  k=Math.max(1,k);
-  // prioridad de estaciones: las de máquina Hyrox primero
-  const order=S.sess==='simulacion'?['ski','sled','bar','row','db','sb','wb','run','bike','kb','box']:['run','ski','row','sled','wb','sb','bike','db','bar','kb','box'];
-  const chosen=[...list].sort((a,b)=>order.indexOf(a.e.id)-order.indexOf(b.e.id)||a.v-b.v).slice(0,k);
-  // reparto de personas: en parejas se reparten parejas
-  const sizes=Array(k).fill(0);
-  if(S.mode==='p'){const pairs=Math.floor(P/2); for(let i=0;i<pairs;i++) sizes[i%k]+=2; if(P%2) sizes[(pairs)%k]+=1;}
-  else for(let i=0;i<P;i++) sizes[i%k]++;
-  const maxSize=Math.max(...sizes);
   const tech=S.dur>=60?8:0, fin=5, warm=10, cool=5;
-  const W=S.dur-warm-cool-tech-fin, rest=S.rest;
+  const W0=S.dur-warm-cool-tech-fin, rest0=S.rest;
+  // cuántas estaciones caben en el tiempo (mínimo 2′30″ de trabajo por estación)
+  const per = S.work==='auto' ? 2.5+rest0 : (+S.work)+rest0;
+  const kTime = Math.max(1, Math.floor(W0/per));
+  const kNeed = Math.ceil(P/G);                       // estaciones necesarias por cupo de equipo
+  let k = Math.max(kNeed, Math.min(list.length, kTime, 10));
+  k = Math.max(1, Math.min(list.length, k));
+  // orden tipo Hyrox: se alterna cardio con estación de fuerza
+  const order=S.sess==='simulacion'
+    ? ['ski','sled','bbj','row','db','sb','wb','run','bike','bar','kb','box']
+    : ['run','sled','ski','wb','row','sb','bbj','db','bike','bar','kb','box'];
+  const chosen=[...list].sort((a,b)=>a.v-b.v||order.indexOf(a.e.id)-order.indexOf(b.e.id)).slice(0,k)
+    .sort((a,b)=>order.indexOf(a.e.id)-order.indexOf(b.e.id)||a.v-b.v);
+  // grupos: puede haber menos grupos que estaciones (clase chica = 1 pareja por estación)
+  const unit=S.mode==='p'?2:1;
+  const ng=Math.max(1, Math.min(k, Math.max(kNeed, Math.floor(P/unit))));
+  const sizes=Array(ng).fill(0);
+  if(S.mode==='p'){const pairs=Math.floor(P/2); for(let i=0;i<pairs;i++) sizes[i%ng]+=2; if(P%2) sizes[pairs%ng]+=1;}
+  else for(let i=0;i<P;i++) sizes[i%ng]++;
+  const starts=sizes.map((_,j)=>Math.floor(j*k/ng));  // cada grupo arranca en una estación distinta
+  const maxSize=Math.max(...sizes);
+  const W=W0, rest=rest0;
   let vueltas=1, work;
   if(S.work==='auto'){
     for(vueltas=1;vueltas<=4;vueltas++){ work=Math.floor((W/(k*vueltas)-rest)*2)/2; if(work<=7) break; }
@@ -482,7 +496,7 @@ function plan(P, info){
     return {...s, ex, mixed, fill, onEquip};
   });
   const R0=rng(S.seed*31+7); const techSt=chosen.length?pick(R0,chosen).e.n:''; const finTxt=pick(R0,FINISH)(S.lvl);
-  return {k,sizes,stations,vueltas,m,work,rest,W:blockLen,total,maxSize,tech,techSt,fin,finTxt,warm,cool};
+  return {k,ng,starts,sizes,stations,vueltas,m,work,rest,W:blockLen,total,maxSize,tech,techSt,fin,finTxt,warm,cool};
 }
 function names(P){
   const raw=(S.names||'').split('\n').map(x=>x.trim()).filter(Boolean);
@@ -518,7 +532,7 @@ function run(resetPeople=true){
   $('secStations').hidden=HY; $('secRot').hidden=HY;
   lastB=boardData(P,pl,H); renderBoard(lastB);
   $('stats').innerHTML=(HY?[[P,'personas'],[H.T,'equipos (teams)'],[Math.max(...H.teams.map(t=>t.size)),'personas por team'],[`${H.amrap}′`,'AMRAP por team']]:[
-    [P,'personas'],[pl.k,'grupos / estaciones'],[pl.maxSize,'máx. por grupo'],[`${fmt(pl.work)} / ${fmt(pl.rest)}`,`trabajo / descanso por estación${pl.vueltas>1?` · ${pl.vueltas} vueltas`:''}`]
+    [P,'personas'],[pl.k,'estaciones'],[pl.ng,`grupos · máx. ${pl.maxSize} por grupo`],[`${fmt(pl.work)} / ${fmt(pl.rest)}`,`trabajo / descanso por estación${pl.vueltas>1?` · ${pl.vueltas} vueltas`:''}`]
   ]).map(s=>`<div class="stat"><b>${s[0]}</b><span>${s[1]}</span></div>`).join('');
 
   let t0=0; const seg=(len,title,desc)=>{const r=[`${fmt(t0)}–${fmt(t0+len)}`,title,desc]; t0+=len; return r;};
@@ -546,7 +560,7 @@ function run(resetPeople=true){
   $('stations').innerHTML=pl.stations.map((s,i)=>{
     const txt=s.ex.txt;
     const mixTxt=s.mixed?`<p class="pp">Solo hay espacio para ${s.onEquip} en ${s.e.n.toLowerCase()}. El resto del grupo hace ${s.fill} y rotan con ellos a la mitad del tiempo (${fmt(pl.work/2)}).</p>`:'';
-    return `<article class="st"><div class="st-top"><div><div class="eyebrow">${s.e.n} · ${s.q} equipos</div><h3>${s.ex.t}</h3><div class="time">${fmt(pl.work)} trabajo · ${fmt(pl.rest)} descanso · ${s.ex.f}</div></div><span class="st-num">${i+1}</span></div>
+    return `<article class="st"><div class="st-top"><div><div class="eyebrow">${s.e.n} · ${s.e.id==='bbj'?'sin equipo':s.q+' equipos'}</div><h3>${s.ex.t}</h3><div class="time">${fmt(pl.work)} trabajo · ${fmt(pl.rest)} descanso · ${s.ex.f}</div></div><span class="st-num">${i+1}</span></div>
       <p>${txt}</p>${mixTxt}
       <div><span class="tag ${s.mixed?'mix':''}">${s.mixed?'mixta':'completa'} · hasta ${s.mixed?pl.maxSize:s.c} personas</span></div></article>`;
   }).join('');
@@ -557,7 +571,7 @@ function run(resetPeople=true){
   for(let r=0;r<rounds;r++){
     const start=pl.warm+pl.tech+r*pl.m;
     rows+=`<tr><td><b>${r+1}</b> <span class="note">${fmt(start)}–${fmt(start+pl.work)}</span></td>`;
-    for(let st=0;st<pl.k;st++){const g=((st-r)%pl.k+pl.k)%pl.k; rows+=`<td><span class="chip" style="background:var(--g${g%12+1})">${LETTERS[g]}</span></td>`;}
+    for(let st=0;st<pl.k;st++){const g=pl.starts.findIndex(s0=>(s0+r)%pl.k===st); rows+= g<0?`<td><span class="note">libre</span></td>`:`<td><span class="chip" style="background:var(--g${g%12+1})">${LETTERS[g]}</span></td>`;}
     rows+='</tr>';
   }
   $('rot').innerHTML=`<thead>${th}</thead><tbody>${rows}</tbody>`;
@@ -570,7 +584,7 @@ function run(resetPeople=true){
       ? ppl.reduce((a,x,i)=>{ if(i%2===0) a.push(x); else a[a.length-1]+=' + '+x; return a; },[])
       : ppl;
     return `<div class="grp"><div class="grp-h"><span class="chip" style="background:var(--g${g%12+1})">${HY?g+1:LETTERS[g]}</span><b>${HY?`Team ${g+1}`:`Grupo ${LETTERS[g]}`}</b><span class="note">· ${sz} personas</span></div>
-      <span class="start">Arranca en: ${HY?H.teams[g].items.join(' · '):`${g+1} · ${pl.stations[g].ex.t}`}</span><ol>${items.map(x=>`<li>${x}</li>`).join('')}</ol></div>`;
+      <span class="start">Arranca en: ${HY?H.teams[g].items.join(' · '):`${pl.starts[g]+1} · ${pl.stations[pl.starts[g]].ex.t}`}</span><ol>${items.map(x=>`<li>${x}</li>`).join('')}</ol></div>`;
   }).join('');
   schedulePhoto();
 }
@@ -582,7 +596,8 @@ function renderStudy(info){
     const q=S.q[e.id], ppu=e.ppu[m], c=q*ppu, st=list.filter(s=>s.e.id===e.id).length;
     return {e,q,ppu,c,st,abs:st*G,mixed:c<G};
   }).sort((a,b)=>b.abs-a.abs||b.c-a.c);
-  const tot=rows.reduce((a,r)=>({q:a.q+r.q,c:a.c+r.c,st:a.st+r.st,abs:a.abs+r.abs}),{q:0,c:0,st:0,abs:0});
+  rows.push({e:{n:'Piso libre (burpees / BBJ)'},q:'—',ppu:'—',c:G,st:1,abs:G,mixed:false});
+  const tot=rows.reduce((a,r)=>({q:a.q+(+r.q||0),c:a.c+r.c,st:a.st+r.st,abs:a.abs+r.abs}),{q:0,c:0,st:0,abs:0});
   $('study').innerHTML=`<thead><tr><th>Equipo</th><th>Cantidad</th><th>Personas por equipo</th><th>Personas en el equipo a la vez</th><th>Estaciones</th><th>Personas que absorbe</th><th>Tipo</th></tr></thead><tbody>`+
     rows.map(r=>`<tr><td><b>${r.e.n}</b></td><td>${r.q}</td><td>${r.ppu}</td><td>${r.c}</td><td>${r.st}</td><td><b>${r.abs}</b></td><td><span class="tag ${r.mixed?'mix':''}">${r.mixed?`mixta · +${G-r.c} sin equipo`:'completa'}</span></td></tr>`).join('')+
     `<tr><td><b>Total</b></td><td>${tot.q}</td><td>—</td><td>${tot.c}</td><td>${tot.st}</td><td><b>${tot.abs}</b></td><td>${G} por estación</td></tr></tbody>`;
@@ -619,7 +634,7 @@ function genHybrix(P){
       if(c){items.push(CARDIO[c](L,v)); eqs.push(c);} else items.push(`${[300,400,500][L]}M RUN`);
       const mine=stats.filter((_,i)=>i%T===t).slice(0,2);
       mine.forEach(id=>{items.push(STAT[id](L,v)); eqs.push(id);});
-      while(items.length<3) items.push(body[(t+items.length)%body.length](L));
+      while(items.length<4) items.push(body[(t+items.length)%body.length](L));
       const capEq=eqs.reduce((a,id)=>a+cap(id),0);
       const tc=capEq+(items.length>eqs.length?Math.max(...eqs.map(cap),4):0) + (c&&c!=='run'?6:0);
       teams.push({name:`TEAM ${t+1}`,items,size:sizes[t],cap:tc,eqs});
@@ -651,7 +666,7 @@ function boardData(P,pl,H){
   return {cols:[
     {t:['WARM ','UP:'],l1:`${w.rounds} ROUNDS`,l2:`${w.a} X ${w.b}S`,list:w.ex},
     {t:['ESTA','CIONES:'],l1:`${pl.k} X ${fmt(pl.work).replace('′',' MIN').replace('″','S')}`,l2:`${fmt(pl.rest).replace('′',' MIN').replace('″','S')} DESCANSO`,list:pl.stations.map(s=>s.ex.t.toUpperCase())},
-    {t:['FINI','SHER:'],l1:null,l2:`${pl.fin} MIN`,list:[pl.finTxt.toUpperCase()],foot:`${P} PERSONAS · ${pl.k} GRUPOS DE ${pl.maxSize} · ROTAN AL SILBATAZO`}
+    {t:['FINI','SHER:'],l1:null,l2:`${pl.fin} MIN`,list:[pl.finTxt.toUpperCase()],foot:`${P} PERSONAS · ${pl.k} ESTACIONES · ${pl.ng} GRUPOS · ROTAN AL SILBATAZO`}
   ]};
 }
 function renderBoard(B){
@@ -729,7 +744,7 @@ $('copy').addEventListener('click',()=>{
   t+=`${SESS[S.sess||'circuito']} · Entrenamiento #${S.seed}\nCalentamiento ${pl.warm}′${pl.tech?`\nTécnica ${pl.tech}′: ${pl.techSt}`:''}\nBloque: ${pl.k} estaciones × ${pl.vueltas} vuelta(s), ${fmt(pl.work)} trabajo + ${fmt(pl.rest)} descanso\nFinisher ${pl.fin}′: ${pl.finTxt}\nEnfriamiento ${pl.cool}′\n\n*ESTACIONES*\n`;
   pl.stations.forEach((s,i)=>{t+=`${i+1}. ${s.ex.t}: ${s.ex.txt}${s.mixed?` (máx ${s.onEquip} en equipo, resto ${s.fill})`:''}\n`;});
   t+=`\n*GRUPOS*\n`;
-  pl.sizes.forEach((sz,g)=>{const ppl=nm.slice(idx,idx+sz); idx+=sz; t+=`${LETTERS[g]} (empieza en ${g+1}): ${ppl.join(', ')}\n`;});
+  pl.sizes.forEach((sz,g)=>{const ppl=nm.slice(idx,idx+sz); idx+=sz; t+=`${LETTERS[g]} (empieza en ${pl.starts[g]+1}): ${ppl.join(', ')}\n`;});
   copyText(t);
 });
 function copyText(t){
