@@ -16,6 +16,8 @@
 <style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 
 
+
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
 <style>
@@ -156,6 +158,19 @@ td:first-child,th:first-child{text-align:left;position:sticky;left:0;background:
 .share input[type=text],.share input[type=file]{font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;height:40px;width:100%}
 .share .fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
 .share .field span{color:inherit;opacity:.7}
+.coach{background:var(--surface);border:2px solid var(--accent);border-radius:8px;padding:16px}
+.switch{display:flex;align-items:center;gap:10px;font-weight:600;cursor:pointer}
+.switch input{width:22px;height:22px;accent-color:var(--accent)}
+.crows{display:flex;flex-direction:column;gap:10px}
+.crow{display:grid;grid-template-columns:32px minmax(0,2fr) minmax(0,1fr) minmax(0,1.6fr) auto;gap:8px;align-items:end;padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.crow .cn{font-family:var(--display);font-size:28px;color:var(--accent-ink);line-height:40px}
+.crow select,.crow input{width:100%;min-width:0}
+.cbtns{display:flex;gap:4px}
+.ib{width:40px;height:40px;border:1px solid var(--line);background:var(--sunk);color:var(--fg);border-radius:5px;font-size:18px;cursor:pointer}
+.cwarn{grid-column:2/-1;margin:0;font-size:13px}
+.cactions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.cactions select{flex:1 1 220px;height:44px;font:inherit;color:var(--fg);background:var(--surface);border:1px solid var(--accent);border-radius:5px;padding:0 10px;font-weight:600}
+@media (max-width:640px){.crow{grid-template-columns:28px minmax(0,1fr) minmax(0,1.3fr) auto;grid-template-areas:"n x x x" "q q l b" "w w w w"}.crow .cn{grid-area:n}.crow .cx{grid-area:x}.crow .field:nth-of-type(2){grid-area:q}.crow .field:nth-of-type(3){grid-area:l}.crow .cbtns{grid-area:b}.crow .cwarn{grid-area:w}}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
 .toast{font-size:13px;color:var(--muted);align-self:center}
 details summary{cursor:pointer;font-weight:600}
@@ -170,6 +185,23 @@ details summary{cursor:pointer;font-weight:600}
     <h1>Planificador <em>de clases</em></h1>
     <p class="lede">Pon lo que tienes en el piso. Te digo cuántas personas caben por clase y te armo la sesión: estaciones, grupos, rotación y ejercicios.</p>
   </header>
+
+  <section class="coach" id="coachSec">
+    <div class="sec-head"><h2>Crea tu <em>entrenamiento</em></h2><span class="eyebrow" id="coachCount"></span></div>
+    <p class="note">Arma tu propia clase: estaciones Hyrox y fuerza con mancuernas y kettlebells. El sistema reparte a la gente, hace la rotación, el pizarrón y la foto con lo que tú pongas.</p>
+    <label class="switch"><input type="checkbox" id="coachOn"><span>Usar mi entrenamiento en la clase de hoy</span></label>
+    <div id="coachRows" class="crows"></div>
+    <div class="cactions">
+      <select id="coachAdd" aria-label="Agregar estación"></select>
+      <button class="btn" type="button" id="coachSuggest">Sugerir</button>
+      <button class="btn" type="button" id="coachClear">Borrar todo</button>
+    </div>
+    <div class="settings">
+      <label class="field"><span>Finisher (opcional)</span><input type="text" id="coachFin" placeholder="Ej. 50 wall balls por tiempo"></label>
+      <label class="field"><span>Indicaciones para el coach (opcional)</span><input type="text" id="coachNotes" placeholder="Ej. cargas pesadas, sin descanso entre series"></label>
+    </div>
+    <p class="note">Los tiempos de trabajo y descanso se ajustan en "Formato".</p>
+  </section>
 
   <section>
     <div class="sec-head"><h2>1 · Tu <em>equipo</em></h2><span class="eyebrow">ajusta cantidades</span></div>
@@ -387,12 +419,99 @@ function genEx(id,L,R,workMin){
 const FINISH=[L=>`${[30,40,50][L]} wall balls por tiempo`,L=>`${[40,60,80][L]} m de burpee broad jumps`,L=>`Benchmark: ${[500,800,1000][L]} m de carrera + ${[30,40,50][L]} wall balls + ${[500,800,1000][L]} m de carrera. Anoten la diferencia entre las dos carreras`,L=>`3 rondas: ${[10,15,20][L]} wall balls + ${[5,8,10][L]} burpee broad jumps`];
 const FILL = {bike:'burpee broad jumps', sled:'lunges sin peso + plancha', default:'burpee broad jumps'};
 const FLOOR={id:'bbj', n:'Piso libre', h:'sin equipo', ppu:{i:1,p:2}};
+/* ---------- Entrenamiento del coach ---------- */
+const DBL=['2×7.5 kg mujer · 2×10 kg hombre','2×10 kg mujer · 2×15 kg hombre','2×15 kg mujer · 2×22.5 kg hombre'];
+const KBL=['8 kg mujer · 12 kg hombre','12 kg mujer · 16 kg hombre','16 kg mujer · 24 kg hombre'];
+const CAT=[
+  {g:'Estaciones Hyrox',items:[
+    ['run','Carrera','run',['300 m','400 m','500 m']],['ski','SkiErg','ski',['200 m','250 m','300 m']],['row','Remo','row',['200 m','250 m','300 m']],
+    ['bike','Bici','bike',['10 cal','12 cal','15 cal']],['sledpush','Sled push','sled',['2 × 12.5 m','2 × 12.5 m','4 × 12.5 m'],'sled'],['sledpull','Sled pull','sled',['2 × 12.5 m','2 × 12.5 m','4 × 12.5 m'],'sled'],
+    ['wb','Wall balls','wb',['12 reps','15 reps','20 reps'],'wb'],['sbl','Sandbag lunges','sb',['10 m','20 m','25 m'],'sb'],['farm','Farmers carry','db',['30 m','40 m','50 m'],'db'],['bbj','Burpee broad jumps','bbj',['10 m','20 m','30 m']]]},
+  {g:'Fuerza con mancuernas',items:[
+    ['dgob','Goblet squat (mancuerna)','db',['10 reps','12 reps','15 reps'],'dbs'],['dthr','Thrusters con mancuernas','db',['8 reps','10 reps','12 reps'],'dbs'],
+    ['ddev','Devil press','db',['5 reps','6 reps','8 reps'],'dbs'],['dren','Renegade row','db',['6 reps','8 reps','10 reps'],'dbs'],
+    ['dpp','Push press','db',['8 reps','10 reps','12 reps'],'dbs'],['drdl','Peso muerto rumano','db',['10 reps','12 reps','15 reps'],'dbs'],
+    ['dlun','Reverse lunge + curl','db',['8 reps','10 reps','12 reps'],'dbs'],['dsn','Snatch alternado','db',['10 reps','12 reps','16 reps'],'dbs'],
+    ['dfp','Floor press','db',['10 reps','12 reps','15 reps'],'dbs'],['dstep','Step ups con mancuernas','db',['10 reps','12 reps','16 reps'],'dbs'],
+    ['dmm','Man maker','db',['4 reps','5 reps','6 reps'],'dbs'],['drow','Remo con mancuerna','db',['10 reps','12 reps','15 reps'],'dbs']]},
+  {g:'Fuerza con kettlebells',items:[
+    ['ksw','Swings rusos','kb',['12 reps','15 reps','20 reps'],'kbs'],['ksa','Swings americanos','kb',['10 reps','12 reps','15 reps'],'kbs'],
+    ['kgob','Goblet squat (kettlebell)','kb',['10 reps','12 reps','15 reps'],'kbs'],['kcp','Clean & press','kb',['6 reps','8 reps','10 reps'],'kbs'],
+    ['ksn','KB snatch','kb',['6 reps','8 reps','10 reps'],'kbs'],['kdl','KB deadlift','kb',['12 reps','15 reps','20 reps'],'kbs'],
+    ['khp','KB high pull','kb',['10 reps','12 reps','15 reps'],'kbs'],['kfr','Front rack lunges','kb',['8 reps','10 reps','12 reps'],'kbs'],
+    ['ktgu','Turkish get up','kb',['2 reps','3 reps','4 reps'],'kbs'],['kcar','KB farmers carry','kb',['30 m','40 m','50 m'],'kbs']]},
+  {g:'Barra',items:[['bthr','Thrusters con barra','bar',['8 reps','10 reps','12 reps'],'bar'],['bdl','Deadlift','bar',['8 reps','10 reps','12 reps'],'bar'],['bfs','Front squat','bar',['6 reps','8 reps','10 reps'],'bar']]},
+  {g:'Peso corporal',items:[['burp','Burpees','bbj',['8 reps','10 reps','12 reps']],['pu','Push ups','bbj',['8 reps','10 reps','15 reps']],['su','Sit ups','bbj',['12 reps','15 reps','20 reps']],['as','Air squats','bbj',['15 reps','20 reps','25 reps']],['mc','Mountain climbers','bbj',['20 reps','30 reps','40 reps']],['vu','V ups','bbj',['8 reps','10 reps','15 reps']]]},
+];
+const CX={}; CAT.forEach(g=>g.items.forEach(([id,n,eq,qty,lk])=>CX[id]={id,n,eq,qty,lk,g:g.g}));
+const loadFor=(c,L)=>c.lk==='dbs'?DBL[L]:c.lk==='kbs'?KBL[L]:c.lk?LOAD[c.lk][L]:'';
+const optsHTML=CAT.map(g=>`<optgroup label="${g.g}">${g.items.map(([id,n])=>`<option value="${id}">${n}</option>`).join('')}</optgroup>`).join('');
+function newRow(id){const c=CX[id]; return {x:id, qty:c.qty[S.lvl], load:loadFor(c,S.lvl)};}
+function suggest(){
+  const R=rng(Date.now()%100000);
+  const hy=shuffle(R,['run','ski','row','sledpush','wb','sbl','farm','bbj'].filter(id=>CX[id].eq==='bbj'||(S.q[CX[id].eq]||0)>0)).slice(0,4);
+  const db=(S.q.db||0)>0?shuffle(R,CAT[1].items.map(i=>i[0])).slice(0,2):[];
+  const kb=(S.q.kb||0)>0?shuffle(R,CAT[2].items.map(i=>i[0])).slice(0,2):shuffle(R,CAT[1].items.map(i=>i[0]).filter(x=>!db.includes(x))).slice(0,(S.q.db||0)>0?1:0);
+  const out=[]; const st=[...db,...kb]; hy.forEach((h,i)=>{out.push(h); if(st[i]) out.push(st[i]);});
+  return out.map(newRow);
+}
+function renderCoach(){
+  const C=S.custom;
+  $('coachOn').checked=!!C.on; $('coachFin').value=C.fin||''; $('coachNotes').value=C.notes||'';
+  $('coachRows').innerHTML=C.rows.length?C.rows.map((r,i)=>{
+    const c=CX[r.x]; const lacking=c.eq!=='bbj'&&!(S.q[c.eq]>0);
+    return `<div class="crow" data-i="${i}">
+      <span class="cn">${i+1}</span>
+      <label class="field cx"><span>Ejercicio</span><select data-k="x" id="cx-${i}">${optsHTML}</select></label>
+      <label class="field"><span>Cantidad</span><input data-k="qty" id="cq-${i}" type="text" value="${r.qty.replace(/"/g,'&quot;')}"></label>
+      <label class="field"><span>Carga</span><input data-k="load" id="cl-${i}" type="text" placeholder="sin carga" value="${(r.load||'').replace(/"/g,'&quot;')}"></label>
+      <div class="cbtns"><button type="button" class="ib" data-a="up" aria-label="Subir estación ${i+1}">↑</button><button type="button" class="ib" data-a="del" aria-label="Quitar estación ${i+1}">×</button></div>
+      ${lacking?`<p class="warn cwarn">No tienes ${EQUIP.find(e=>e.id===c.eq).n.toLowerCase()} registradas en "Tu equipo". Agrégalas para que el sistema calcule el cupo.</p>`:''}
+    </div>`;}).join(''):`<p class="note">Todavía no hay estaciones. Agrega la primera o toca "Sugerir" para arrancar con una mezcla de estaciones Hyrox y fuerza.</p>`;
+  C.rows.forEach((r,i)=>{$('cx-'+i).value=r.x;});
+  $('coachCount').textContent=C.rows.length?`${C.rows.length} estaciones`:'';
+}
+function coachChanged(){save(); run(false);}
+function initCoach(){
+  $('coachRows').addEventListener('input',ev=>{const row=ev.target.closest('.crow'); if(!row) return; const i=+row.dataset.i, k=ev.target.dataset.k; if(!k) return;
+    const r=S.custom.rows[i];
+    if(k==='x'){const n=newRow(ev.target.value); r.x=n.x; r.qty=n.qty; r.load=n.load; renderCoach();}
+    else r[k]=ev.target.value;
+    coachChanged();});
+  $('coachRows').addEventListener('click',ev=>{const b=ev.target.closest('button[data-a]'); if(!b) return; const i=+b.closest('.crow').dataset.i, rows=S.custom.rows;
+    if(b.dataset.a==='del') rows.splice(i,1); else if(i>0) [rows[i-1],rows[i]]=[rows[i],rows[i-1]];
+    if(!rows.length) S.custom.on=false; renderCoach(); coachChanged();});
+  $('coachAdd').addEventListener('change',ev=>{if(!ev.target.value) return; S.custom.rows.push(newRow(ev.target.value)); S.custom.on=true; ev.target.value=''; renderCoach(); coachChanged();});
+  $('coachSuggest').addEventListener('click',()=>{S.custom.rows=suggest(); S.custom.on=true; renderCoach(); coachChanged();});
+  $('coachClear').addEventListener('click',()=>{S.custom.rows=[]; S.custom.on=false; S.custom.fin=''; renderCoach(); coachChanged();});
+  $('coachOn').addEventListener('change',ev=>{S.custom.on=ev.target.checked&&S.custom.rows.length>0; renderCoach(); coachChanged();});
+  $('coachFin').addEventListener('input',ev=>{S.custom.fin=ev.target.value; coachChanged();});
+  $('coachNotes').addEventListener('input',ev=>{S.custom.notes=ev.target.value; coachChanged();});
+  $('coachAdd').innerHTML=`<option value="">+ Agregar estación…</option>${optsHTML}`;
+  renderCoach();
+}
+const coachActive=()=>S.custom&&S.custom.on&&S.custom.rows.length>0;
+function coachStations(G){
+  const m=S.mode, uses={};
+  S.custom.rows.forEach(r=>{const eq=CX[r.x].eq; uses[eq]=(uses[eq]||0)+1;});
+  return S.custom.rows.map((r,i)=>{
+    const c=CX[r.x];
+    const e=c.eq==='bbj'?FLOOR:EQUIP.find(x=>x.id===c.eq);
+    const q=c.eq==='bbj'?'piso':Math.floor((S.q[c.eq]||0)/uses[c.eq]);
+    const cap=c.eq==='bbj'?G:q*e.ppu[m];
+    const load=(r.load||'').trim(), qty=(r.qty||'').trim();
+    const txt=`${qty?qty+' de ':''}${c.n.toLowerCase()}. ${m==='p'?'Tú-yo: uno trabaja y su pareja descansa; alternan hasta el silbatazo.':'Repite sin parar hasta el silbatazo.'}${load?` Carga: ${load}.`:''}`;
+    return {e,q,c:cap,v:i,ex:{t:c.n,f:'Coach',txt:txt.charAt(0).toUpperCase()+txt.slice(1),board:`${qty} ${c.n}`.trim()}};
+  });
+}
+
 const LETTERS='ABCDEFGHIJKLMNOPQRSTUVWX';
 
 const S = {mode:'p', dur:60, lvl:1, coaches:2, ratio:20, area:'', people:null, seed:1, sess:'hybrix', work:'auto', rest:1, names:'', gym:'HYBRIX', tagline:'OFFICIAL HYROX TRAINING CENTER', q:{}};
 try{const saved=JSON.parse(localStorage.getItem('hybrix-planner2')||'null'); if(saved) Object.assign(S,saved);}catch(e){}
 let BG=null; try{const d=localStorage.getItem('hybrix-bg'); if(d){BG=new Image(); BG.onload=()=>run(false); BG.src=d;}}catch(e){}
 EQUIP.forEach(e=>{ if(S.q[e.id]==null) S.q[e.id]=e.q; });
+S.custom=S.custom||{on:false,rows:[],fin:'',notes:''};
 const save=()=>{try{localStorage.setItem('hybrix-planner2',JSON.stringify(S))}catch(e){}};
 const $=id=>document.getElementById(id);
 
@@ -419,6 +538,7 @@ $('sess').addEventListener('input',()=>{S.sess=$('sess').value; run(false);});
 $('work').addEventListener('input',()=>{S.work=$('work').value; run(false);});
 $('rest').addEventListener('input',()=>{S.rest=+$('rest').value; run(false);});
 $('names').addEventListener('input',()=>{S.names=$('names').value; run(false);});
+initCoach();
 $('gym').value=S.gym||''; $('tagline').value=S.tagline||'';
 $('gym').addEventListener('input',()=>{S.gym=$('gym').value; $('wmTop').innerHTML=wm(S.gym); save(); schedulePhoto();});
 $('tagline').addEventListener('input',()=>{S.tagline=$('tagline').value; save(); schedulePhoto();});
@@ -466,13 +586,15 @@ function plan(P, info){
   const per = S.work==='auto' ? 2.5+rest0 : (+S.work)+rest0;
   const kTime = Math.max(1, Math.floor(W0/per));
   const kNeed = Math.ceil(P/G);                       // estaciones necesarias por cupo de equipo
+  const CUS=coachActive();
   let k = Math.max(kNeed, Math.min(list.length, kTime, 10));
   k = Math.max(1, Math.min(list.length, k));
+  if(CUS) k=S.custom.rows.length;
   // orden tipo Hyrox: se alterna cardio con estación de fuerza
   const order=S.sess==='simulacion'
     ? ['ski','sled','bbj','row','db','sb','wb','run','bike','bar','kb','box']
     : ['run','sled','ski','wb','row','sb','bbj','db','bike','bar','kb','box'];
-  const chosen=[...list].sort((a,b)=>a.v-b.v||order.indexOf(a.e.id)-order.indexOf(b.e.id)).slice(0,k)
+  const chosen=CUS?coachStations(G):[...list].sort((a,b)=>a.v-b.v||order.indexOf(a.e.id)-order.indexOf(b.e.id)).slice(0,k)
     .sort((a,b)=>order.indexOf(a.e.id)-order.indexOf(b.e.id)||a.v-b.v);
   // grupos: puede haber menos grupos que estaciones (clase chica = 1 pareja por estación)
   const unit=S.mode==='p'?2:1;
@@ -490,12 +612,12 @@ function plan(P, info){
   } else { work=+S.work; vueltas=Math.max(1,Math.floor(W/(k*(work+rest)))); }
   const m=work+rest; const blockLen=k*vueltas*m; const total=warm+tech+blockLen+fin+cool;
   const stations=chosen.map((s,i)=>{
-    const ex=genEx(s.e.id,S.lvl,rng(S.seed*7919+i*104729+s.v*13),fmt(work));
+    const ex=s.ex||genEx(s.e.id,S.lvl,rng(S.seed*7919+i*104729+s.v*13),fmt(work));
     const mixed = s.c < maxSize;
     const onEquip = s.c; const fill=FILL[s.e.id]||FILL.default;
     return {...s, ex, mixed, fill, onEquip};
   });
-  const R0=rng(S.seed*31+7); const techSt=chosen.length?pick(R0,chosen).e.n:''; const finTxt=pick(R0,FINISH)(S.lvl);
+  const R0=rng(S.seed*31+7); const techSt=chosen.length?pick(R0,chosen).e.n:''; const finTxt=(CUS&&S.custom.fin.trim())||pick(R0,FINISH)(S.lvl);
   return {k,ng,starts,sizes,stations,vueltas,m,work,rest,W:blockLen,total,maxSize,tech,techSt,fin,finTxt,warm,cool};
 }
 function names(P){
@@ -527,7 +649,7 @@ function run(resetPeople=true){
   else w.hidden=true;
 
   const pl=plan(P,info);
-  const HY=(S.sess==='hybrix');
+  const HY=(S.sess==='hybrix')&&!coachActive();
   const H=HY?genHybrix(P):null; last={pl,P,H};
   $('secStations').hidden=HY; $('secRot').hidden=HY;
   lastB=boardData(P,pl,H); renderBoard(lastB);
@@ -548,10 +670,10 @@ function run(resetPeople=true){
   } else {
   const segs=[seg(pl.warm,'Calentamiento','Remo o ski suave 3 min, movilidad de cadera y hombro, 2 rondas de 10 air squats + 5 burpees + 10 lunges con los patrones del día a carga ligera.')];
   if(pl.tech) segs.push(seg(pl.tech,`Técnica · ${pl.techSt}`,'Una estación con el coach, sin fatiga: postura, ritmo y transiciones. Carga ligera. Cambia cada semana.'));
-  segs.push(seg(pl.W,`${SESS[S.sess||'circuito']}`,`${pl.k} estaciones × ${pl.vueltas} vuelta(s). Cada estación: ${fmt(pl.work)} de trabajo + ${fmt(pl.rest)} de descanso para cambiar. Al silbatazo, cada grupo avanza a la siguiente.`));
+  segs.push(seg(pl.W,coachActive()?'Entrenamiento del coach':`${SESS[S.sess||'circuito']}`,`${pl.k} estaciones × ${pl.vueltas} vuelta(s). Cada estación: ${fmt(pl.work)} de trabajo + ${fmt(pl.rest)} de descanso para cambiar. Al silbatazo, cada grupo avanza a la siguiente.`));
   segs.push(seg(pl.fin,'Finisher',pl.finTxt+'.'));
   segs.push(seg(pl.cool,'Enfriamiento','Caminar 2 min, estiramiento de cadera, isquios, pantorrilla y antebrazos.'));
-  $('genNum').textContent='#'+S.seed; $('genSess').textContent=`${SESS[S.sess||'circuito']} · ${fmt(pl.work)} trabajo / ${fmt(pl.rest)} descanso`;
+  $('genNum').textContent=coachActive()?'Coach':'#'+S.seed; $('genSess').textContent=coachActive()?`Entrenamiento del coach · ${pl.k} estaciones · ${fmt(pl.work)} trabajo / ${fmt(pl.rest)} descanso${S.custom.notes?` · ${S.custom.notes}`:''}`:`${SESS[S.sess||'circuito']} · ${fmt(pl.work)} trabajo / ${fmt(pl.rest)} descanso`;
   if(pl.total>S.dur+1){w.hidden=false; w.textContent=`Con ${fmt(pl.work)} + ${fmt(pl.rest)} por estación la clase dura ${Math.ceil(pl.total)} min, más que los ${S.dur} que elegiste. Baja el trabajo o el descanso.`;}
   $('timeline').innerHTML=segs.map(t=>`<div class="tl"><span class="t">${t[0]}</span><b>${t[1]}</b><p class="note">${t[2]}</p></div>`).join('');
   }
@@ -665,7 +787,7 @@ function boardData(P,pl,H){
   const w=genWarm(R);
   return {cols:[
     {t:['WARM ','UP:'],l1:`${w.rounds} ROUNDS`,l2:`${w.a} X ${w.b}S`,list:w.ex},
-    {t:['ESTA','CIONES:'],l1:`${pl.k} X ${fmt(pl.work).replace('′',' MIN').replace('″','S')}`,l2:`${fmt(pl.rest).replace('′',' MIN').replace('″','S')} DESCANSO`,list:pl.stations.map(s=>s.ex.t.toUpperCase())},
+    {t:['ESTA','CIONES:'],l1:`${pl.k} X ${fmt(pl.work).replace('′',' MIN').replace('″','S')}`,l2:`${fmt(pl.rest).replace('′',' MIN').replace('″','S')} DESCANSO`,list:pl.stations.map(s=>(s.ex.board||s.ex.t).toUpperCase())},
     {t:['FINI','SHER:'],l1:null,l2:`${pl.fin} MIN`,list:[pl.finTxt.toUpperCase()],foot:`${P} PERSONAS · ${pl.k} ESTACIONES · ${pl.ng} GRUPOS · ROTAN AL SILBATAZO`}
   ]};
 }
@@ -704,7 +826,10 @@ function drawBoard(B){
     let f2=62;ctx.font=`${f2}px ${D}`;while(ctx.measureText(c.l2).width>cw&&f2>30){f2-=2;ctx.font=`${f2}px ${D}`;}ctx.fillStyle=CY;ctx.fillText(c.l2,x,y);y+=34;
     let endY=y;
     if(c.list){
-      const n=c.list.length, fsz=n>8?34:n>5?40:46, lh=fsz*1.22;
+      const limit = ci===1 ? H-50 : ci===0 ? H-150 : H-260;
+      const need=f=>{ctx.font=`600 ${f}px ${C}`; return f+14+c.list.reduce((a,it)=>a+f*1.22*Math.min(2,lines(ctx,it,cw-f*1.6).length)+f*0.45,0);};
+      let fsz=46; while(fsz>24 && y+need(fsz)>limit) fsz-=2;
+      const lh=fsz*1.22;
       y+=fsz+14;
       c.list.forEach((it,i)=>{ctx.font=`${fsz}px ${D}`;ctx.fillStyle=CY;ctx.fillText(`${i+1})`,x,y);
         ctx.font=`600 ${fsz}px ${C}`;ctx.fillStyle=INK;const ls=lines(ctx,it,cw-fsz*1.6).slice(0,2);ls.forEach((l,j)=>ctx.fillText(l,x+fsz*1.6,y+j*lh));y+=lh*ls.length+fsz*0.45;});
