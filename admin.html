@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HYBRIX · Administrador</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#121416">
+<link rel="icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Login del administrador -->
+<main class="login" id="loginView">
+  <div class="box">
+    <div><div class="bigwm">HYBRI<span>X</span></div><div class="eyebrow">Panel de administrador</div></div>
+    <div id="loading" class="row"><div class="spin" aria-hidden="true"></div><span class="note">Cargando…</span></div>
+    <form id="form" class="card" hidden>
+      <h2>Entrar como <em>admin</em></h2>
+      <label class="field"><span>Correo</span><input id="email" type="email" autocomplete="username" required></label>
+      <label class="field"><span>Contraseña</span><input id="pass" type="password" autocomplete="current-password" required></label>
+      <button class="btn primary" id="go" type="submit">Entrar</button>
+      <p class="msg bad" id="err" role="alert" hidden></p>
+    </form>
+  </div>
+</main>
+
+<!-- Panel -->
+<div class="wrap" id="panel" hidden>
+  <header class="row" style="justify-content:space-between">
+    <div><div class="wm">HYBRI<span>X</span></div><h1>Panel de <em>gyms</em></h1></div>
+    <button class="btn sm" id="logout" type="button">Salir</button>
+  </header>
+
+  <div class="stats" id="stats"></div>
+
+  <!-- Nuevo usuario -->
+  <section class="card hl">
+    <div class="sec-head"><h2>Nuevo <em>usuario</em></h2><span class="eyebrow">1 cuenta = 1 dispositivo</span></div>
+    <form id="newForm" class="grid">
+      <label class="field"><span>Correo del usuario</span><input id="nEmail" type="email" required placeholder="coach@gym.com"></label>
+      <label class="field"><span>Contraseña</span><input id="nPass" type="text" required minlength="6"></label>
+      <label class="field"><span>Nombre del gym</span><input id="nGym" type="text" required placeholder="Ej. Box Norte"></label>
+      <label class="field"><span>Nombre de la persona</span><input id="nName" type="text" placeholder="Ej. Coach Luis"></label>
+      <label class="field"><span>Plan</span><select id="nPlan"></select></label>
+      <label class="field"><span>Vence el</span><input id="nExp" type="date" required></label>
+      <div class="field" style="justify-content:end"><button class="btn primary" id="nGo" type="submit">Crear usuario</button></div>
+    </form>
+    <p class="msg" id="nMsg" hidden></p>
+    <div id="nShare" hidden>
+      <p class="note">Mándale esto por WhatsApp:</p>
+      <div class="copybox" id="nText"></div>
+      <div class="row" style="margin-top:8px"><button class="btn sm" type="button" id="nCopy">Copiar mensaje</button><span class="note" id="nCopied"></span></div>
+    </div>
+  </section>
+
+  <!-- Usuarios -->
+  <section class="card">
+    <div class="sec-head"><h2><em>Usuarios</em></h2><span class="eyebrow" id="uCount"></span></div>
+    <input id="search" type="search" placeholder="Buscar por gym, correo o persona" aria-label="Buscar usuario">
+    <div class="users" id="users"><p class="note">Cargando usuarios…</p></div>
+  </section>
+
+  <!-- Publicar planificador -->
+  <section class="card">
+    <div class="sec-head"><h2>Publicar <em>planificador</em></h2><span class="eyebrow" id="pubInfo"></span></div>
+    <p class="note">Sube el archivo <b>planificador.html</b>. Cuando te mande una versión nueva, la subes aquí y todos los gyms la ven al volver a abrir la app. Este archivo no va en GitHub.</p>
+    <input id="pubFile" type="file" accept=".html,text/html" aria-label="Archivo del planificador">
+    <div class="row"><button class="btn primary" id="pubGo" type="button">Publicar</button><span class="msg" id="pubMsg"></span></div>
+  </section>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, initializeAuth, inMemoryPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { firebaseConfig, ADMIN_EMAILS, PLANES } from "./config.js";
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+// App secundaria: crea usuarios sin cerrar tu sesión de admin
+const sec = initializeApp(firebaseConfig, "crear-usuarios");
+const secAuth = initializeAuth(sec, { persistence: inMemoryPersistence });
+
+const SITE = location.href.replace(/admin\.html.*$/, "");
+const fmtD = d => d ? d.toLocaleDateString("es-MX", { day:"numeric", month:"short", year:"numeric" }) : "—";
+const toD = t => t && t.toDate ? t.toDate() : null;
+const money = n => "$" + n.toLocaleString("es-MX") + " MXN";
+
+// ---------- Login admin ----------
+function showLogin(msg){
+  $("panel").hidden = true; $("loginView").hidden = false; $("loading").hidden = true; $("form").hidden = false;
+  $("err").hidden = !msg; $("err").textContent = msg || ""; $("go").disabled = false;
+}
+$("form").addEventListener("submit", async ev => {
+  ev.preventDefault(); $("go").disabled = true;
+  try { await signInWithEmailAndPassword(auth, $("email").value.trim(), $("pass").value); }
+  catch(e){ showLogin("Correo o contraseña incorrectos."); }
+});
+$("logout").addEventListener("click", () => signOut(auth));
+onAuthStateChanged(auth, user => {
+  if(!user) return showLogin();
+  if(!ADMIN_EMAILS.map(x=>x.toLowerCase()).includes((user.email||"").toLowerCase())){
+    signOut(auth); return showLogin("Esta cuenta no es de administrador.");
+  }
+  $("loginView").hidden = true; $("panel").hidden = false;
+  initForm(); loadUsers(); loadPub();
+});
+
+// ---------- Nuevo usuario ----------
+function genPass(){
+  const a = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  const r = crypto.getRandomValues(new Uint32Array(9));
+  return Array.from(r, x => a[x % a.length]).join("");
+}
+function plusDays(n, from){ const d = from ? new Date(from) : new Date(); d.setDate(d.getDate()+n); return d; }
+const isoDate = d => d.toISOString().slice(0,10);
+function initForm(){
+  if($("nPlan").options.length) return;
+  $("nPlan").innerHTML = Object.entries(PLANES).map(([p,v]) => `<option value="${esc(p)}">${esc(p)} · ${money(v)}/mes</option>`).join("");
+  $("nPlan").value = Object.keys(PLANES)[1] || Object.keys(PLANES)[0];
+  $("nPass").value = genPass();
+  $("nExp").value = isoDate(plusDays(30));
+}
+$("newForm").addEventListener("submit", async ev => {
+  ev.preventDefault();
+  const email = $("nEmail").value.trim().toLowerCase(), pass = $("nPass").value.trim();
+  const msg = $("nMsg"); msg.hidden = false; msg.className = "msg"; msg.textContent = "Creando…"; $("nGo").disabled = true; $("nShare").hidden = true;
+  try {
+    const cred = await createUserWithEmailAndPassword(secAuth, email, pass);
+    await signOut(secAuth);
+    const exp = new Date($("nExp").value + "T23:59:59");
+    await setDoc(doc(db, "users", cred.user.uid), {
+      email, gym: $("nGym").value.trim(), name: $("nName").value.trim(), plan: $("nPlan").value,
+      active: true, expires: Timestamp.fromDate(exp), createdAt: serverTimestamp(), deviceId: null
+    });
+    msg.className = "msg ok"; msg.textContent = "Usuario creado.";
+    $("nText").textContent =
+`¡Bienvenido a HYBRIX! 💪
+Tu acceso al planificador de clases:
+
+1. Abre en Safari (iPhone) o Chrome (Android):
+${SITE}
+2. Agrégala a tu pantalla de inicio (Compartir → "Agregar a pantalla de inicio").
+3. Entra desde ese ícono con:
+Correo: ${email}
+Contraseña: ${pass}
+
+Tu cuenta funciona en un solo dispositivo: el primero donde entres. Vence el ${fmtD(exp)}.`;
+    $("nShare").hidden = false; $("nCopied").textContent = "";
+    $("nEmail").value = ""; $("nGym").value = ""; $("nName").value = ""; $("nPass").value = genPass();
+    loadUsers();
+  } catch(e){
+    console.error(e);
+    msg.className = "msg bad";
+    msg.textContent = String(e.code||"").includes("email-already") ? "Ese correo ya tiene cuenta." :
+      String(e.code||"").includes("weak-password") ? "La contraseña necesita al menos 6 caracteres." :
+      String(e.code||"").includes("invalid-email") ? "Revisa el correo, no es válido." :
+      String(e.code||"").includes("permission") ? "No tienes permiso: revisa que tu correo esté en las reglas de Firestore." :
+      "No se pudo crear: " + (e.message || e);
+  } finally { $("nGo").disabled = false; }
+});
+$("nCopy").addEventListener("click", () => {
+  const t = $("nText").textContent;
+  const ok = () => $("nCopied").textContent = "Copiado";
+  const fb = () => { const r = document.createRange(); r.selectNodeContents($("nText")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); $("nCopied").textContent = "Selecciona y copia"; };
+  try { navigator.clipboard.writeText(t).then(ok, fb); } catch(e){ fb(); }
+});
+
+// ---------- Lista de usuarios ----------
+let USERS = [];
+async function loadUsers(){
+  try {
+    const qs = await getDocs(collection(db, "users"));
+    USERS = qs.docs.map(d => ({ id: d.id, ...d.data() })).sort((a,b) => (a.gym||"").localeCompare(b.gym||""));
+    renderUsers();
+  } catch(e){
+    $("users").innerHTML = `<p class="msg bad">No se pudieron cargar los usuarios. Revisa tu correo en las reglas de Firestore.</p>`;
+  }
+}
+function status(u){
+  const exp = toD(u.expires);
+  if(!u.active) return ["Desactivado","bad"];
+  if(exp && exp < new Date()) return ["Vencido","bad"];
+  if(exp && exp < plusDays(5)) return ["Vence pronto","warn"];
+  return ["Activo","ok"];
+}
+function renderUsers(){
+  const q = $("search").value.trim().toLowerCase();
+  const list = USERS.filter(u => !q || [u.gym,u.email,u.name].join(" ").toLowerCase().includes(q));
+  const act = USERS.filter(u => status(u)[0] === "Activo" || status(u)[0] === "Vence pronto");
+  const mrr = act.reduce((a,u) => a + (PLANES[u.plan] || 0), 0);
+  const gyms = new Set(act.map(u => (u.gym||"").toLowerCase())).size;
+  $("stats").innerHTML = [
+    [act.length, "cuentas activas"], [gyms, "gyms activos"], [money(mrr), "ingreso mensual"],
+    [USERS.filter(u => !u.deviceId).length, "sin dispositivo ligado"]
+  ].map(s => `<div class="stat"><b>${esc(s[0])}</b><span>${s[1]}</span></div>`).join("");
+  $("uCount").textContent = `${USERS.length} cuentas`;
+  $("users").innerHTML = list.length ? list.map(u => {
+    const [st, cls] = status(u);
+    const dev = u.deviceId ? `Ligado a ${esc(u.deviceName||"dispositivo")} · ${fmtD(toD(u.deviceAt))}` : "Sin dispositivo (se liga al primer acceso)";
+    return `<article class="user" data-id="${esc(u.id)}">
+      <div class="who"><b>${esc(u.gym || "Sin gym")}</b><span class="meta">${esc(u.name ? u.name + " · " : "")}${esc(u.email)}</span></div>
+      <div><span class="pill ${cls}">${st}</span></div>
+      <div class="meta" style="grid-column:1/-1">Plan ${esc(u.plan||"—")} · vence ${fmtD(toD(u.expires))} · ${dev}${u.lastSeen ? " · última vez " + fmtD(toD(u.lastSeen)) : ""}</div>
+      <div class="acts">
+        <button class="btn sm" data-a="release" ${u.deviceId ? "" : "disabled"}>Liberar dispositivo</button>
+        <button class="btn sm" data-a="extend">+30 días</button>
+        <button class="btn sm" data-a="toggle">${u.active ? "Desactivar" : "Activar"}</button>
+        <button class="btn sm" data-a="reset">Mandar cambio de contraseña</button>
+      </div>
+      <p class="msg" data-m hidden></p>
+    </article>`;
+  }).join("") : `<p class="note">${USERS.length ? "Sin resultados." : "Todavía no hay usuarios. Crea el primero arriba."}</p>`;
+}
+$("search").addEventListener("input", renderUsers);
+$("users").addEventListener("click", async ev => {
+  const b = ev.target.closest("button[data-a]"); if(!b) return;
+  const card = b.closest(".user"), id = card.dataset.id, u = USERS.find(x => x.id === id), m = card.querySelector("[data-m]");
+  const say = (t, c) => { m.hidden = false; m.className = "msg " + (c||""); m.textContent = t; };
+  // Confirmación en la misma tarjeta para acciones sensibles
+  if((b.dataset.a === "release" || b.dataset.a === "toggle") && !b.dataset.sure){
+    b.dataset.sure = "1"; const old = b.textContent; b.textContent = "¿Seguro? Toca otra vez";
+    setTimeout(() => { if(b.isConnected){ b.dataset.sure = ""; b.textContent = old; } }, 4000); return;
+  }
+  b.disabled = true;
+  try {
+    const ref = doc(db, "users", id);
+    if(b.dataset.a === "release"){ await updateDoc(ref, { deviceId: null, deviceName: null, deviceAt: null }); say("Dispositivo liberado. Ya puede entrar desde su nuevo dispositivo.", "ok"); }
+    if(b.dataset.a === "extend"){ const cur = toD(u.expires); const base = cur && cur > new Date() ? cur : new Date(); await updateDoc(ref, { expires: Timestamp.fromDate(plusDays(30, base)) }); say("Se agregaron 30 días.", "ok"); }
+    if(b.dataset.a === "toggle"){ await updateDoc(ref, { active: !u.active }); say(u.active ? "Cuenta desactivada." : "Cuenta activada.", "ok"); }
+    if(b.dataset.a === "reset"){ await sendPasswordResetEmail(auth, u.email); say("Le llegó un correo para cambiar su contraseña.", "ok"); return; }
+    setTimeout(loadUsers, 900);
+  } catch(e){ console.error(e); say("No se pudo: " + (e.code || e.message), "bad"); b.disabled = false; }
+});
+
+// ---------- Publicar planificador ----------
+async function loadPub(){
+  try { const s = await getDoc(doc(db, "app", "main"));
+    $("pubInfo").textContent = s.exists() ? "Última versión: " + fmtD(toD(s.data().updatedAt)) : "Sin publicar"; } catch(e){}
+}
+$("pubGo").addEventListener("click", async () => {
+  const f = $("pubFile").files[0], m = $("pubMsg");
+  if(!f){ m.className = "msg bad"; m.textContent = "Primero elige el archivo planificador.html."; return; }
+  const html = await f.text();
+  if(!/<html/i.test(html) || html.length < 5000){ m.className = "msg bad"; m.textContent = "Ese archivo no parece el planificador. Elige planificador.html."; return; }
+  if(html.length > 900000){ m.className = "msg bad"; m.textContent = "El archivo es demasiado grande (máx. 900 KB)."; return; }
+  $("pubGo").disabled = true; m.className = "msg"; m.textContent = "Publicando…";
+  try { await setDoc(doc(db, "app", "main"), { html, updatedAt: serverTimestamp(), size: html.length });
+    m.className = "msg ok"; m.textContent = "Publicado. Los gyms ya ven esta versión."; loadPub();
+  } catch(e){ m.className = "msg bad"; m.textContent = "No se pudo publicar: " + (e.code || e.message); }
+  finally { $("pubGo").disabled = false; }
+});
+</script>
+</body>
+</html>
