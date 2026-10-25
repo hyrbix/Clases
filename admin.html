@@ -32,7 +32,7 @@
 <div class="wrap" id="panel" hidden>
   <header class="row" style="justify-content:space-between">
     <div><div class="wm">HYBRI<span>X</span></div><h1>Panel de <em>gyms</em></h1></div>
-    <button class="btn sm" id="logout" type="button">Salir</button>
+    <div class="row"><a class="btn sm primary" href="./" style="display:inline-flex;align-items:center;text-decoration:none">Abrir planificador</a><button class="btn sm" id="logout" type="button">Salir</button></div>
   </header>
 
   <div class="stats" id="stats"></div>
@@ -73,11 +73,16 @@
   </section>
 </div>
 
+<script>
+// Si algo no carga en 12 s, avisa en vez de quedarse girando
+setTimeout(function(){var l=document.getElementById("loading");if(l&&!l.hidden){l.innerHTML='<p class="msg bad">No se pudo cargar. Cierra la pestaña y vuelve a abrir la página. Si sigue igual, espera 10 minutos (GitHub tarda en actualizar).</p>';}},12000);
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, initializeAuth, inMemoryPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig, ADMIN_EMAILS, PLANES, PAGOS } from "./config.js";
+import * as CFG from "./config.js?v=4";
+const firebaseConfig = CFG.firebaseConfig, ADMIN_EMAILS = CFG.ADMIN_EMAILS || [], PLANES = CFG.PLANES || {"Pro":990}, PAGOS = CFG.PAGOS || {};
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
