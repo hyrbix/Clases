@@ -21,4 +21,12 @@ export const ADMIN_EMAILS = ["arma_felice@hotmail.com"];
 export const CONTACTO = "WhatsApp 938 152 6705";
 
 // Precios mensuales por plan (para el resumen de ingresos del panel)
-export const PLANES = { "Coach": 590, "Pro": 990, "Élite": 1790 };
+export const PLANES = { "Coach": 590, "Pro": 990, "Élite": 1790, "Cortesía": 0 };
+
+// Links de cobro de Mercado Pago (o Stripe). Pega el link de cada plan.
+// Si un plan tiene link, el mensaje de bienvenida lo incluye para que el gym pague.
+export const PAGOS = {
+  "Coach": "",
+  "Pro": "",
+  "Élite": ""
+};

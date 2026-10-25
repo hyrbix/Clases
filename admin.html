@@ -77,7 +77,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, initializeAuth, inMemoryPersistence, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs, serverTimestamp, Timestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig, ADMIN_EMAILS, PLANES } from "./config.js";
+import { firebaseConfig, ADMIN_EMAILS, PLANES, PAGOS } from "./config.js";
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -131,7 +131,9 @@ function initForm(){
 $("newForm").addEventListener("submit", async ev => {
   ev.preventDefault();
   const email = $("nEmail").value.trim().toLowerCase(), pass = $("nPass").value.trim();
-  const msg = $("nMsg"); msg.hidden = false; msg.className = "msg"; msg.textContent = "Creando…"; $("nGo").disabled = true; $("nShare").hidden = true;
+  const msg = $("nMsg"); msg.hidden = false;
+  if(ADMIN_EMAILS.map(x=>x.toLowerCase()).includes(email)){ msg.className = "msg warn"; msg.textContent = "Ese es tu correo de administrador: ya puedes usar el planificador gratis entrando con él en la página principal. Para tus coaches usa otros correos y el plan Cortesía."; return; }
+  msg.className = "msg"; msg.textContent = "Creando…"; $("nGo").disabled = true; $("nShare").hidden = true;
   try {
     const cred = await createUserWithEmailAndPassword(secAuth, email, pass);
     await signOut(secAuth);
@@ -152,7 +154,10 @@ ${SITE}
 Correo: ${email}
 Contraseña: ${pass}
 
-Tu cuenta funciona en un solo dispositivo: el primero donde entres. Vence el ${fmtD(exp)}.`;
+Tu cuenta funciona en un solo dispositivo: el primero donde entres. Vence el ${fmtD(exp)}.${(PAGOS && PAGOS[$("nPlan").value]) ? `
+
+Paga tu mensualidad aquí:
+${PAGOS[$("nPlan").value]}` : ""}`;
     $("nShare").hidden = false; $("nCopied").textContent = "";
     $("nEmail").value = ""; $("nGym").value = ""; $("nName").value = ""; $("nPass").value = genPass();
     loadUsers();

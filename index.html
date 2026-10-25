@@ -48,7 +48,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig, CONTACTO } from "./config.js";
+import { firebaseConfig, CONTACTO, ADMIN_EMAILS } from "./config.js";
 
 const $ = id => document.getElementById(id);
 const app = initializeApp(firebaseConfig);
@@ -116,6 +116,13 @@ onAuthStateChanged(auth, async user => {
   if(checking) return; checking = true;
   $("form").hidden = true; $("loading").hidden = false; $("loadingTxt").textContent = "Revisando tu acceso…";
   try {
+    // El administrador (tú) entra gratis y sin candado de dispositivo
+    if(ADMIN_EMAILS.map(x=>x.toLowerCase()).includes((user.email||"").toLowerCase())){
+      $("loadingTxt").textContent = "Abriendo el planificador…";
+      const a = await getDoc(doc(db, "app", "main"));
+      if(!a.exists()){ checking=false; return showBlocked("Sin <em>publicar</em>", "Todavía no publicas el planificador. Entra a admin.html y súbelo en \"Publicar planificador\"."); }
+      return openPlanner(a.data().html, "");
+    }
     const ref = doc(db, "users", user.uid);
     const snap = await getDoc(ref);
     if(!snap.exists()){ await signOut(auth); checking=false; return showBlocked("Cuenta <em>sin alta</em>", "Tu cuenta todavía no está activada."); }
