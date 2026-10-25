@@ -69,7 +69,8 @@
     <div class="sec-head"><h2>Publicar <em>planificador</em></h2><span class="eyebrow" id="pubInfo"></span></div>
     <p class="note">Sube el archivo <b>planificador.html</b>. Cuando te mande una versión nueva, la subes aquí y todos los gyms la ven al volver a abrir la app. Este archivo no va en GitHub.</p>
     <input id="pubFile" type="file" accept=".html,text/html" aria-label="Archivo del planificador">
-    <div class="row"><button class="btn primary" id="pubGo" type="button">Publicar</button><span class="msg" id="pubMsg"></span></div>
+    <div class="row"><button class="btn primary" id="pubGo" type="button">Publicar archivo</button><button class="btn" id="pubGh" type="button">Publicar el que está en GitHub</button></div>
+    <p class="msg" id="pubMsg"></p>
   </section>
 </div>
 
@@ -255,6 +256,24 @@ async function loadPub(){
   try { const s = await getDoc(doc(db, "app", "main"));
     $("pubInfo").textContent = s.exists() ? "Última versión: " + fmtD(toD(s.data().updatedAt)) : "Sin publicar"; } catch(e){}
 }
+async function publishHtml(html){
+  const m = $("pubMsg");
+  if(!/<html/i.test(html) || html.length < 5000){ m.className = "msg bad"; m.textContent = "Ese archivo no parece el planificador."; return false; }
+  if(html.length > 900000){ m.className = "msg bad"; m.textContent = "El archivo es demasiado grande (máx. 900 KB)."; return false; }
+  m.className = "msg"; m.textContent = "Publicando…";
+  try { await setDoc(doc(db, "app", "main"), { html, updatedAt: serverTimestamp(), size: html.length });
+    m.className = "msg ok"; m.textContent = "Publicado. Ya puedes abrir el planificador."; loadPub(); return true;
+  } catch(e){ m.className = "msg bad"; m.textContent = "No se pudo publicar: " + (e.code || e.message); return false; }
+}
+$("pubGh").addEventListener("click", async () => {
+  const m = $("pubMsg"); $("pubGh").disabled = true; m.className = "msg"; m.textContent = "Buscando planificador.html en GitHub…";
+  try {
+    const r = await fetch("planificador.html?t=" + Date.now(), { cache: "no-store" });
+    if(!r.ok){ m.className = "msg bad"; m.textContent = "No encontré planificador.html en tu repositorio. Súbelo a GitHub o usa \"Publicar archivo\"."; return; }
+    if(await publishHtml(await r.text())) m.textContent = "Publicado. Ahora BORRA planificador.html de GitHub para que nadie lo abra sin contraseña.";
+  } catch(e){ m.className = "msg bad"; m.textContent = "No se pudo leer: " + e.message; }
+  finally { $("pubGh").disabled = false; }
+});
 $("pubGo").addEventListener("click", async () => {
   const f = $("pubFile").files[0], m = $("pubMsg");
   if(!f){ m.className = "msg bad"; m.textContent = "Primero elige el archivo planificador.html."; return; }

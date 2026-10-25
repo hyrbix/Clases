@@ -44,11 +44,16 @@
   </div>
 </main>
 
+<script>
+// Si algo no carga en 12 s, avisa en vez de quedarse girando
+setTimeout(function(){var l=document.getElementById("loading");if(l&&!l.hidden){l.innerHTML='<p class="msg bad">No se pudo cargar. Cierra la pestaña y vuelve a abrir la página. Si sigue igual, espera 10 minutos (GitHub tarda en actualizar).</p>';}},12000);
+</script>
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { firebaseConfig, CONTACTO, ADMIN_EMAILS } from "./config.js";
+import * as CFG from "./config.js?v=4";
+const firebaseConfig = CFG.firebaseConfig, CONTACTO = CFG.CONTACTO || "", ADMIN_EMAILS = CFG.ADMIN_EMAILS || [];
 
 const $ = id => document.getElementById(id);
 const app = initializeApp(firebaseConfig);
