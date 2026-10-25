@@ -18,8 +18,10 @@
 
 
 
+
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@500;700&family=Orbitron:wght@700;800&display=swap">
 <style>
 /* Layout: una columna tipo "pizarrón de box": equipo arriba, cupo al centro, clase generada abajo */
 :root{
@@ -258,7 +260,7 @@ details summary{cursor:pointer;font-weight:600}
     </div>
     <div class="gen">
       <div><div class="eyebrow">Entrenamiento</div><b id="genNum">#1</b><p class="note" id="genSess"></p></div>
-      <button class="btn primary" type="button" id="shuffle">Cambiar entrenamiento</button>
+      <div class="row" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" onclick="document.getElementById('tOpen').click()">⏱ Abrir reloj</button><button class="btn primary" type="button" id="shuffle">Cambiar entrenamiento</button></div>
     </div>
     <details>
       <summary>Pegar nombres de alumnos (opcional)</summary>
@@ -512,6 +514,8 @@ try{const saved=JSON.parse(localStorage.getItem('hybrix-planner2')||'null'); if(
 let BG=null; try{const d=localStorage.getItem('hybrix-bg'); if(d){BG=new Image(); BG.onload=()=>run(false); BG.src=d;}}catch(e){}
 EQUIP.forEach(e=>{ if(S.q[e.id]==null) S.q[e.id]=e.q; });
 S.custom=S.custom||{on:false,rows:[],fin:'',notes:''};
+window.hybrixLast=()=>last;
+window.hybrixBoard=()=>lastB;
 const save=()=>{try{localStorage.setItem('hybrix-planner2',JSON.stringify(S))}catch(e){}};
 const $=id=>document.getElementById(id);
 
@@ -880,6 +884,299 @@ function copyText(t){
 
 run();
 </script>
+
+<!-- ================= RELOJ HYBRIX ================= -->
+<style>
+.tfab{position:fixed;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:60;display:flex;align-items:center;gap:8px;
+  background:#0B0C0D;color:#fff;border:0;border-radius:999px;padding:12px 18px;font:400 18px var(--display);letter-spacing:.06em;text-transform:uppercase;cursor:pointer;box-shadow:0 6px 20px rgba(0,0,0,.3)}
+.tfab b{color:#4FC3F7;font-weight:400}
+.tw{position:fixed;inset:0;z-index:1000;background:#050607;color:#F2F4F5;display:flex;flex-direction:column;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
+  font-family:var(--body);--ph:#4FC3F7}
+.tw[data-ph="work"]{--ph:#2EE66B}.tw[data-ph="rest"]{--ph:#FF3B3B}.tw[data-ph="prep"]{--ph:#FFC21A}.tw[data-ph="done"]{--ph:#4FC3F7}
+.tw-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tw-brand{font:400 22px var(--display);letter-spacing:.04em}.tw-brand span{color:#4FC3F7}
+.tw-x{display:flex;gap:6px;flex-wrap:wrap}
+.tbtn{height:44px;min-width:44px;padding:0 14px;border-radius:6px;border:1px solid #2A2F33;background:#15181B;color:#F2F4F5;font:400 16px var(--display);letter-spacing:.05em;text-transform:uppercase;cursor:pointer}
+.tbtn.on{background:#4FC3F7;color:#04121A;border-color:#4FC3F7}
+.tbtn:focus-visible,.tw input:focus-visible,.tw select:focus-visible{outline:3px solid #4FC3F7;outline-offset:2px}
+.tw-face{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1vh;min-height:0;text-align:center}
+.tw-ph{font:400 clamp(28px,6vw,72px)/1 var(--display);letter-spacing:.08em;color:var(--ph);text-transform:uppercase}
+.tw-time{font-family:"Orbitron",var(--mono);font-weight:800;font-size:clamp(90px,24vw,360px);line-height:1;color:var(--ph);font-variant-numeric:tabular-nums;letter-spacing:.02em;text-shadow:0 0 24px color-mix(in srgb,var(--ph) 45%,transparent)}
+.tw-round{font:400 clamp(22px,4.2vw,52px)/1 var(--display);letter-spacing:.06em;color:#C9CED2}
+.tw-round b{color:#fff;font-weight:400}
+.tw-next{font-size:clamp(14px,1.8vw,22px);color:#8C949A}
+.tw-bar{width:min(100%,1100px);height:10px;border-radius:5px;background:#1A1E21;overflow:hidden}
+.tw-bar i{display:block;height:100%;width:0;background:var(--ph);transition:width .2s linear}
+.tw-ctl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.tw-ctl .big{height:64px;min-width:160px;font-size:26px;border-radius:8px}
+.tw-ctl .go{background:var(--ph);color:#050607;border-color:var(--ph)}
+.tw-cfg{background:#0E1113;border:1px solid #23282C;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:12px;max-height:46vh;overflow:auto}
+.tw-modes,.tw-pre{display:flex;gap:6px;flex-wrap:wrap}
+.tw-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tw label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#9AA2A8;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.tw input,.tw select{height:44px;border-radius:6px;border:1px solid #2A2F33;background:#15181B;color:#F2F4F5;font:500 18px var(--body);padding:0 10px;width:100%;min-width:0}
+.tw .mmss{display:flex;gap:4px;align-items:center}.tw .mmss input{text-align:center}
+.tw .hint{font-size:13px;color:#8C949A;margin:0}
+.tw[data-run="1"] .tw-cfg{display:none}
+.tw-main{flex:1;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;min-height:0}
+.tw[data-wo="1"] .tw-main{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr)}
+.tw-wo{display:none;background:#0E1113;border:1px solid #23282C;border-radius:10px;padding:14px;overflow:auto;min-height:0;gap:12px;flex-direction:column}
+.tw[data-wo="1"] .tw-wo{display:flex}
+.tw[data-wo="1"] .tw-time{font-size:clamp(70px,13vw,260px)}
+.tw[data-wo="1"][data-run="1"] .tw-time{font-size:clamp(80px,15vw,300px)}
+.wo-col{border-left:4px solid #23282C;padding:6px 0 6px 12px;opacity:.55}
+.wo-col.on{border-color:var(--ph);opacity:1;background:color-mix(in srgb,var(--ph) 8%,transparent);border-radius:0 8px 8px 0}
+.wo-col h4{margin:0;font:400 clamp(22px,2.6vw,40px)/1 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.wo-col h4 em{font-style:normal;color:#4FC3F7}
+.wo-sub{font:400 clamp(15px,1.6vw,24px)/1.2 var(--display);color:#4FC3F7;letter-spacing:.03em;margin-top:4px}
+.wo-col ol,.wo-col ul{margin:8px 0 0;padding:0;list-style:none;display:flex;flex-direction:column;gap:4px}
+.wo-col li{font:600 clamp(15px,1.6vw,24px)/1.2 var(--cond);text-transform:uppercase;display:flex;gap:8px}
+.wo-col li b{font:400 1em var(--display);color:#4FC3F7;min-width:1.6em}
+.wo-teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:8px}
+.wo-team .pill2{display:inline-block;background:#4FC3F7;color:#04121A;font:400 clamp(14px,1.4vw,20px) var(--display);padding:2px 12px;border-radius:999px 5px 999px 5px;letter-spacing:.04em}
+.wo-team li::before{content:"- ";color:#4FC3F7}
+.wo-empty{color:#8C949A;font-size:15px}
+@media (orientation:portrait){.tw{overflow-y:auto}.tw-main{flex:none}.tw[data-wo="1"] .tw-main{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto}.tw-wo{overflow:visible}.tw-cfg{max-height:none;overflow:visible}}
+.tw:not([data-run="1"]) .tw-time{font-size:clamp(64px,13vw,180px)}
+.tw:not([data-run="1"]) .tw-ph{font-size:clamp(22px,3.6vw,44px)}
+.tw:not([data-run="1"]) .tw-round{font-size:clamp(16px,2.4vw,28px)}
+.tw-face{padding-block:8px}
+.tw[data-run="1"] .tw-ctl .big{height:72px}
+
+.tw[data-run="1"] .tw-time{font-size:clamp(110px,30vw,460px)}
+@media (max-height:520px){.tw-cfg{max-height:38vh}.tw-time{font-size:clamp(70px,18vw,200px)}}
+@media (prefers-reduced-motion:reduce){.tw-bar i{transition:none}}
+</style>
+
+<button class="tfab" type="button" id="tOpen" aria-label="Abrir reloj">⏱ <b>Reloj</b></button>
+
+<div class="tw" id="tw" hidden data-ph="idle" role="dialog" aria-label="Reloj de entrenamiento">
+  <div class="tw-top">
+    <div class="tw-brand" id="twBrand">HYBRI<span>X</span> · RELOJ</div>
+    <div class="tw-x">
+      <button class="tbtn on" type="button" id="tWoBtn">Entrenamiento</button>
+      <button class="tbtn" type="button" id="tFull">Pantalla completa</button>
+      <button class="tbtn" type="button" id="tClose">Cerrar</button>
+    </div>
+  </div>
+
+  <div class="tw-main">
+  <div class="tw-face">
+    <div class="tw-ph" id="tPh">Listo</div>
+    <div class="tw-time" id="tTime" aria-live="off">00:00</div>
+    <div class="tw-round" id="tRound"></div>
+    <div class="tw-bar"><i id="tBar"></i></div>
+    <div class="tw-next" id="tNext"></div>
+  </div>
+  <aside class="tw-wo" id="tWo" aria-label="Entrenamiento de hoy"></aside>
+  </div>
+
+  <div class="tw-ctl">
+    <button class="tbtn big go" type="button" id="tGo">Iniciar</button>
+    <button class="tbtn big" type="button" id="tSkip">Saltar</button>
+    <button class="tbtn big" type="button" id="tReset">Reiniciar</button>
+  </div>
+
+  <div class="tw-cfg" id="tCfg">
+    <div class="tw-modes" id="tModes">
+      <button class="tbtn" data-m="int" type="button">Intervalos</button>
+      <button class="tbtn" data-m="tabata" type="button">Tabata</button>
+      <button class="tbtn" data-m="emom" type="button">EMOM</button>
+      <button class="tbtn" data-m="amrap" type="button">AMRAP</button>
+      <button class="tbtn" data-m="fortime" type="button">For time</button>
+      <button class="tbtn" data-m="clock" type="button">Hora</button>
+    </div>
+    <div class="tw-pre" id="tPre"></div>
+    <div class="tw-grid">
+      <label class="f" id="fWork"><span id="lWork">Trabajo</span><div class="mmss"><input id="tWm" type="number" min="0" max="99" inputmode="numeric" aria-label="Minutos de trabajo">:<input id="tWs" type="number" min="0" max="59" inputmode="numeric" aria-label="Segundos de trabajo"></div></label>
+      <label class="f" id="fRest"><span>Descanso</span><div class="mmss"><input id="tRm" type="number" min="0" max="99" inputmode="numeric" aria-label="Minutos de descanso">:<input id="tRs" type="number" min="0" max="59" inputmode="numeric" aria-label="Segundos de descanso"></div></label>
+      <label class="f" id="fRounds"><span>Rondas</span><input id="tRounds" type="number" min="1" max="99" inputmode="numeric"></label>
+      <label class="f"><span>Cuenta de inicio</span><select id="tPrep"><option value="0">Sin cuenta</option><option value="5">5 s</option><option value="10">10 s</option><option value="15">15 s</option><option value="30">30 s</option></select></label>
+      <label class="f"><span>Sonido</span><select id="tSnd"><option value="buzzer">Buzzer de box</option><option value="beep">Beep digital</option><option value="bell">Campana de box</option><option value="whistle">Silbato</option><option value="horn">Claxon</option><option value="gong">Gong</option><option value="none">Sin sonido</option></select></label>
+      <label class="f"><span>Voz</span><select id="tVoice"><option value="1">Voz en español</option><option value="0">Sin voz</option></select></label>
+      <label class="f"><span>Volumen</span><input id="tVol" type="range" min="0" max="1" step="0.05"></label>
+      <div class="f" style="justify-content:end"><button class="tbtn" type="button" id="tTest">Probar sonido</button></div>
+    </div>
+    <p class="hint" id="tHint"></p>
+  </div>
+</div>
+
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const tw=$('tw');
+let T;try{T=JSON.parse(localStorage.getItem('hybrix-timer')||'null');}catch(e){}
+T=Object.assign({mode:'int',work:40,rest:20,rounds:8,prep:10,snd:'buzzer',voice:'1',vol:0.8,label:'',wo:'1'},T||{});
+const esc=x=>String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function activeCol(B){
+  const L=(T.label||'').toLowerCase(); if(!L) return -1;
+  return B.cols.findIndex(c=>{const t=(c.t[0]+c.t[1]).toLowerCase().replace(/[^a-záéíóúñ]/g,'');
+    return (L.startsWith('warm')&&t.startsWith('warm'))||(L.startsWith('power')&&t.startsWith('power'))||(L.startsWith('workout')&&t.startsWith('workout'))||(L.startsWith('estaciones')&&t.startsWith('estaciones'))||(L.startsWith('finisher')&&t.startsWith('finisher'));});
+}
+function renderWo(){
+  tw.dataset.wo=T.wo; $('tWoBtn').classList.toggle('on',T.wo==='1');
+  const B=window.hybrixBoard&&window.hybrixBoard();
+  if(!B||!B.cols){ $('tWo').innerHTML='<p class="wo-empty">Arma la clase en el planificador y aquí aparece el entrenamiento.</p>'; return; }
+  const on=activeCol(B);
+  $('tWo').innerHTML=B.cols.map((c,i)=>`<section class="wo-col ${i===on?'on':''}">
+    <h4>${esc(c.t[0])}${c.t[0].endsWith(':')?' ':''}<em>${esc(c.t[1])}</em></h4>
+    ${c.l1||c.l2?`<div class="wo-sub">${esc([c.l1,c.l2].filter(Boolean).join(' · '))}</div>`:''}
+    ${c.list?`<ol>${c.list.map((x,j)=>`<li><b>${j+1})</b><span>${esc(x)}</span></li>`).join('')}</ol>`:''}
+    ${c.teams?`<div class="wo-teams">${c.teams.map(t=>`<div class="wo-team"><span class="pill2">${esc(t.name)}</span><ul>${t.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`).join('')}</div>`:''}
+  </section>`).join('');
+  const box=$('tWo'), el=box.querySelector('.wo-col.on'); if(el && box.scrollHeight>box.clientHeight+4) box.scrollTop=el.offsetTop-box.offsetTop-8;
+}
+const saveT=()=>{try{localStorage.setItem('hybrix-timer',JSON.stringify(T));}catch(e){}};
+
+/* ---------- Sonidos (sintetizados, sin archivos) ---------- */
+let AC=null, master=null;
+function ac(){ if(!AC){ const C=window.AudioContext||window.webkitAudioContext; if(!C) return null; AC=new C(); master=AC.createGain(); master.connect(AC.destination);} if(AC.state==='suspended') AC.resume(); master.gain.value=+T.vol; return AC; }
+function tone(f,d,type,v,t0,o){ const a=ac(); if(!a) return; o=o||{}; const t=a.currentTime+(t0||0);
+  const osc=a.createOscillator(), g=a.createGain(); osc.type=type||'sine'; osc.frequency.setValueAtTime(f,t);
+  if(o.slide) osc.frequency.exponentialRampToValueAtTime(o.slide,t+d);
+  if(o.vib){ const l=a.createOscillator(), lg=a.createGain(); l.frequency.value=o.vib; lg.gain.value=o.vibD||40; l.connect(lg); lg.connect(osc.frequency); l.start(t); l.stop(t+d); }
+  let node=osc; if(o.lp){ const fl=a.createBiquadFilter(); fl.type='lowpass'; fl.frequency.value=o.lp; osc.connect(fl); node=fl; }
+  node.connect(g); g.connect(master);
+  const at=o.at||0.005, rel=o.decay?d:Math.min(0.05,d/3);
+  g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v||0.4,t+at);
+  if(o.decay){ g.gain.exponentialRampToValueAtTime(0.0001,t+d); } else { g.gain.setValueAtTime(v||0.4,t+d-rel); g.gain.exponentialRampToValueAtTime(0.0001,t+d); }
+  osc.start(t); osc.stop(t+d+0.02);
+}
+function bell(base,t0,len){ [1,2.76,5.4,8.93].forEach((m,i)=>tone(base*m,len||2.2,'sine',[0.5,0.25,0.12,0.06][i],t0,{decay:1,at:0.002})); }
+function gong(t0){ [1,1.48,2.02,2.74,3.6].forEach((m,i)=>tone(70*m,3.6,'sine',[0.6,0.3,0.25,0.12,0.08][i],t0,{decay:1,at:0.02})); }
+function horn(d,t0){ [233,294,349].forEach(f=>tone(f,d,'sawtooth',0.18,t0,{lp:1800,at:0.02})); }
+const SND={
+  beep:{count:()=>tone(880,0.14,'sine',0.5),go:()=>tone(1320,0.7,'sine',0.55),rest:()=>tone(660,0.7,'sine',0.5),end:()=>{[0,0.35,0.7].forEach(t=>tone(1320,0.25,'sine',0.55,t));tone(1760,0.9,'sine',0.5,1.05);}},
+  buzzer:{count:()=>{tone(440,0.16,'square',0.22);tone(446,0.16,'square',0.22);},go:()=>{tone(440,0.9,'square',0.25);tone(447,0.9,'square',0.25);},rest:()=>{tone(330,0.9,'square',0.25);tone(335,0.9,'square',0.25);},end:()=>{tone(440,2,'square',0.25);tone(447,2,'square',0.25);}},
+  bell:{count:()=>tone(1500,0.08,'triangle',0.35),go:()=>bell(620),rest:()=>bell(520,0,1.4),end:()=>[0,0.45,0.9].forEach(t=>bell(620,t,1.6))},
+  whistle:{count:()=>tone(2600,0.1,'sine',0.25,0,{vib:35,vibD:120}),go:()=>tone(2700,0.55,'sine',0.3,0,{vib:32,vibD:160}),rest:()=>{tone(2700,0.2,'sine',0.3,0,{vib:32,vibD:160});tone(2700,0.2,'sine',0.3,0.3,{vib:32,vibD:160});},end:()=>tone(2700,1.4,'sine',0.32,0,{vib:30,vibD:170})},
+  horn:{count:()=>tone(900,0.1,'square',0.18),go:()=>horn(0.9),rest:()=>{horn(0.25);horn(0.25,0.35);},end:()=>horn(2.2)},
+  gong:{count:()=>tone(1200,0.08,'sine',0.35),go:()=>gong(),rest:()=>bell(400,0,1.2),end:()=>{gong();gong(1.2);}},
+  none:{count(){},go(){},rest(){},end(){}}
+};
+function play(kind){ try{ (SND[T.snd]||SND.beep)[kind](); }catch(e){} }
+function say(txt){ if(T.voice!=='1'||!window.speechSynthesis) return; try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(txt); u.lang='es-MX'; u.rate=1.05; u.volume=Math.min(1,+T.vol+0.1); speechSynthesis.speak(u);}catch(e){} }
+
+/* ---------- Secuencia ---------- */
+const lbl={int:'Intervalos',tabata:'Tabata',emom:'EMOM',amrap:'AMRAP',fortime:'For time',clock:'Hora'};
+function build(){
+  const seq=[]; const prep=+T.prep;
+  if(T.mode==='clock') return seq;
+  if(prep>0) seq.push({ph:'prep',d:prep,txt:'Prepárate'});
+  if(T.mode==='amrap') seq.push({ph:'work',d:T.work,txt:'AMRAP',r:1,n:1});
+  else if(T.mode==='fortime') seq.push({ph:'work',d:T.work,txt:'For time',r:1,n:1,up:true});
+  else { const n=+T.rounds||1; for(let r=1;r<=n;r++){ seq.push({ph:'work',d:T.work,txt:T.mode==='emom'?'Minuto':'Trabajo',r,n}); if(+T.rest>0 && r<n) seq.push({ph:'rest',d:T.rest,txt:T.restTxt||'Descanso',r,n}); } }
+  return seq;
+}
+let half=false, seq=[], idx=0, segStart=0, pausedAt=0, running=false, timerId=null, lastSec=null, wake=null;
+const fmt=s=>{ s=Math.max(0,Math.ceil(s)); const h=Math.floor(s/3600), m=Math.floor(s%3600/60), x=s%60; return (h?h+':'+String(m).padStart(2,'0'):String(m).padStart(2,'0'))+':'+String(x).padStart(2,'0'); };
+const fmtUp=s=>{ s=Math.max(0,Math.floor(s)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); };
+function show(){
+  if(T.mode==='clock'){ const d=new Date(); tw.dataset.ph='done'; $('tPh').textContent='Hora'; $('tTime').textContent=d.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}); $('tRound').textContent=d.toLocaleDateString('es-MX',{weekday:'long',day:'numeric',month:'long'}); $('tBar').style.width='0'; $('tNext').textContent=''; return; }
+  const s=seq[idx];
+  if(!s){ tw.dataset.ph=running===null?'done':'idle'; return; }
+  const now=performance.now(), el=((pausedAt||now)-segStart)/1000, left=s.d-el;
+  tw.dataset.ph=s.ph;
+  $('tPh').textContent=s.txt;
+  $('tTime').textContent=s.up?fmtUp(el):fmt(left);
+  $('tRound').innerHTML=s.n&&s.n>1?`${T.mode==='emom'?'Minuto':'Ronda'} <b>${s.r}</b> / ${s.n}`:(T.label||lbl[T.mode]);
+  $('tBar').style.width=Math.min(100,el/s.d*100)+'%';
+  const nx=seq[idx+1]; $('tNext').textContent=nx?`Sigue: ${nx.txt}${nx.n>1?' '+nx.r:''} · ${fmt(nx.d)}`:(s.up?`Tope: ${fmt(s.d)}`:'Último bloque');
+}
+function startSeg(i){
+  idx=i; segStart=performance.now(); pausedAt=0; lastSec=null; half=false;
+  const s=seq[i]; if(!s) return finish();
+  if(s.ph==='work'){ play('go'); say(i===0||seq[i-1].ph==='prep'?'¡Vamos!':(T.mode==='emom'?'Minuto '+s.r:'¡Trabajo!')); }
+  else if(s.ph==='rest'){ play('rest'); say(T.restTxt?'Cambio':'Descanso'); }
+  else if(s.ph==='prep'){ say('Prepárate'); }
+  show();
+}
+function tick(){
+  if(!running) return;
+  const s=seq[idx]; if(!s) return;
+  const el=(performance.now()-segStart)/1000, left=s.d-el;
+  if(left<=0){ startSeg(idx+1); return; }
+  const sec=Math.ceil(left);
+  if(sec!==lastSec){ lastSec=sec;
+    if(sec<=3 && sec>=1 && s.d>=5){ play('count'); if(T.voice==='1' && (s.ph!=='work'||seq[idx+1]==null)) say(['','uno','dos','tres'][sec]); }
+    if(!half && s.ph==='work' && s.d>=120 && left<=s.d/2 && T.mode!=='emom'){ half=true; say('Mitad'); }
+  }
+  show();
+}
+function finish(){ running=null; clearInterval(timerId); tw.dataset.run='0'; tw.dataset.ph='done'; play('end'); say('¡Terminado! Buen trabajo'); $('tPh').textContent='¡Terminado!'; $('tTime').textContent=T.mode==='fortime'?fmtUp(T.work):'00:00'; $('tBar').style.width='100%'; $('tNext').textContent=''; $('tGo').textContent='Iniciar'; releaseWake(); }
+async function lockWake(){ try{ if('wakeLock' in navigator) wake=await navigator.wakeLock.request('screen'); }catch(e){} }
+function releaseWake(){ try{ wake&&wake.release(); }catch(e){} wake=null; }
+function go(){
+  ac();
+  if(T.mode==='clock'){ return; }
+  if(running){ running=false; pausedAt=performance.now(); clearInterval(timerId); $('tGo').textContent='Seguir'; tw.dataset.run='0'; try{speechSynthesis.cancel();}catch(e){} releaseWake(); return; }
+  if(pausedAt && seq.length && idx<seq.length){ segStart+=performance.now()-pausedAt; pausedAt=0; }
+  else { seq=build(); if(!seq.length) return; running=true; startSeg(0); }
+  running=true; tw.dataset.run='1'; $('tGo').textContent='Pausa'; clearInterval(timerId); timerId=setInterval(tick,100); lockWake();
+}
+function reset(){ running=false; clearInterval(timerId); seq=[]; idx=0; pausedAt=0; tw.dataset.run='0'; $('tGo').textContent='Iniciar'; try{speechSynthesis.cancel();}catch(e){} releaseWake(); preview(); }
+function preview(){
+  if(T.mode==='clock'){ show(); return; }
+  tw.dataset.ph='idle'; const sq=build(); const w=sq.find(s=>s.ph==='work');
+  $('tPh').textContent=T.label||lbl[T.mode]; $('tTime').textContent=T.mode==='fortime'?'00:00':fmt(w?w.d:0);
+  const tot=sq.reduce((a,s)=>a+s.d,0);
+  $('tRound').innerHTML=(T.mode==='amrap'||T.mode==='fortime')?(T.mode==='fortime'?`Tope ${fmt(T.work)}`:'1 bloque'):`${T.rounds} ${T.mode==='emom'?'minutos':'rondas'} · ${fmt(T.work)} trabajo${+T.rest>0&&T.mode!=='emom'?' / '+fmt(T.rest)+' descanso':''}`;
+  $('tBar').style.width='0'; $('tNext').textContent=`Duración total ${fmt(tot)}`;
+}
+
+/* ---------- Configuración ---------- */
+function syncForm(){
+  $('tModes').querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.m===T.mode));
+  $('tWm').value=Math.floor(T.work/60); $('tWs').value=T.work%60; $('tRm').value=Math.floor(T.rest/60); $('tRs').value=T.rest%60;
+  $('tRounds').value=T.rounds; $('tPrep').value=T.prep; $('tSnd').value=T.snd; $('tVoice').value=T.voice; $('tVol').value=T.vol;
+  const m=T.mode; $('fRest').hidden=!(m==='int'||m==='tabata'); $('fRounds').hidden=!(m==='int'||m==='tabata'||m==='emom'); $('fWork').hidden=m==='clock';
+  $('lWork').textContent=m==='amrap'?'Duración':m==='fortime'?'Tope de tiempo':m==='emom'?'Cada':'Trabajo';
+  $('tHint').textContent={int:'Trabajo y descanso por ronda. Ideal para estaciones.',tabata:'Clásico: 20 s de trabajo, 10 s de descanso, 8 rondas.',emom:'Cada minuto empieza una ronda nueva. Lo que sobra del minuto es descanso.',amrap:'Cuenta regresiva: el máximo de rondas en el tiempo.',fortime:'Cuenta hacia arriba hasta terminar o hasta el tope.',clock:'Muestra la hora en grande para la pantalla del gym.'}[m];
+  renderPresets(); preview(); renderWo();
+}
+function readForm(){
+  T.work=Math.max(1,(+$('tWm').value||0)*60+(+$('tWs').value||0)); T.rest=Math.max(0,(+$('tRm').value||0)*60+(+$('tRs').value||0));
+  T.rounds=Math.max(1,+$('tRounds').value||1); T.prep=+$('tPrep').value; T.snd=$('tSnd').value; T.voice=$('tVoice').value; T.vol=+$('tVol').value; T.label=''; T.restTxt='';
+  saveT(); if(master) master.gain.value=T.vol; reset();
+}
+['tWm','tWs','tRm','tRs','tRounds','tPrep','tSnd','tVoice','tVol'].forEach(id=>$(id).addEventListener('input',readForm));
+$('tModes').addEventListener('click',e=>{const b=e.target.closest('button'); if(!b) return; T.mode=b.dataset.m; T.label=''; T.restTxt='';
+  if(T.mode==='tabata'){T.work=20;T.rest=10;T.rounds=8;} if(T.mode==='emom'){T.work=60;T.rest=0;T.rounds=Math.max(T.rounds,10);} if(T.mode==='amrap'&&T.work<120){T.work=12*60;} if(T.mode==='fortime'&&T.work<120){T.work=20*60;}
+  saveT(); reset(); syncForm(); if(T.mode==='clock'){ clearInterval(timerId); timerId=setInterval(show,500); }});
+
+/* Atajos de la clase de hoy */
+function presets(){
+  const out=[]; const L=window.hybrixLast&&window.hybrixLast();
+  if(L&&L.H){ const H=L.H;
+    out.push({t:'Warm up',f:()=>({mode:'int',work:H.warm.a,rest:H.warm.b,rounds:H.warm.rounds*H.warm.ex.length,label:'Warm up'})});
+    out.push({t:'Power',f:()=>({mode:'int',work:H.power.a,rest:H.power.b,rounds:H.power.rounds*H.power.ex.length,label:'Power'})});
+    out.push({t:`Workout AMRAP ${H.amrap}′`,f:()=>({mode:'amrap',work:H.amrap*60,label:'Workout'})});
+  } else if(L&&L.pl){ const p=L.pl;
+    out.push({t:`Estaciones ${p.k*p.vueltas} × ${Math.round(p.work*60)}s`,f:()=>({mode:'int',work:Math.round(p.work*60),rest:Math.round(p.rest*60),rounds:p.k*p.vueltas,label:'Estaciones',restTxt:'Cambio de estación'})});
+    out.push({t:`Finisher ${p.fin}′`,f:()=>({mode:'amrap',work:p.fin*60,label:'Finisher'})});
+  }
+  out.push({t:'Tabata 8×20/10',f:()=>({mode:'tabata',work:20,rest:10,rounds:8})});
+  out.push({t:'EMOM 12',f:()=>({mode:'emom',work:60,rest:0,rounds:12})});
+  out.push({t:'AMRAP 15′',f:()=>({mode:'amrap',work:900})});
+  return out;
+}
+function renderPresets(){ const P=presets(); $('tPre').innerHTML='<span class="hint" style="align-self:center">Rápidos:</span>'+P.map((p,i)=>`<button class="tbtn" type="button" data-p="${i}">${p.t}</button>`).join(''); $('tPre')._p=P; }
+$('tPre').addEventListener('click',e=>{const b=e.target.closest('button[data-p]'); if(!b) return; const p=$('tPre')._p[+b.dataset.p]; Object.assign(T,{label:'',restTxt:''},p.f()); saveT(); reset(); syncForm(); });
+
+$('tWoBtn').addEventListener('click',()=>{ T.wo=T.wo==='1'?'0':'1'; saveT(); renderWo(); });
+$('tTest').addEventListener('click',()=>{ ac(); play('count'); setTimeout(()=>play('go'),700); });
+$('tGo').addEventListener('click',go);
+$('tReset').addEventListener('click',reset);
+$('tSkip').addEventListener('click',()=>{ if(running&&seq[idx]) startSeg(idx+1); });
+$('tOpen').addEventListener('click',()=>{ tw.hidden=false; document.body.style.overflow='hidden'; ac(); try{ const g=(JSON.parse(localStorage.getItem('hybrix-planner2')||'{}').gym||'HYBRIX').toUpperCase(); $('twBrand').innerHTML=g.slice(0,-1).replace(/</g,'&lt;')+'<span>'+g.slice(-1).replace(/</g,'&lt;')+'</span> · RELOJ'; }catch(e){} syncForm(); if(T.mode==='clock'){clearInterval(timerId);timerId=setInterval(show,500);} });
+$('tClose').addEventListener('click',()=>{ reset(); clearInterval(timerId); tw.hidden=true; document.body.style.overflow=''; try{ document.fullscreenElement&&document.exitFullscreen(); }catch(e){} });
+$('tFull').addEventListener('click',()=>{ const el=document.documentElement; try{ if(document.fullscreenElement||document.webkitFullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); } else { const r=(el.requestFullscreen||el.webkitRequestFullscreen); r&&r.call(el); } }catch(e){} });
+document.addEventListener('keydown',e=>{ if(tw.hidden) return; if(e.code==='Space'&&e.target.tagName!=='INPUT'&&e.target.tagName!=='SELECT'){ e.preventDefault(); go(); } if(e.key==='Escape') $('tClose').click(); });
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden&&running) lockWake(); });
+})();
+</script>
+<!-- ================= FIN RELOJ ================= -->
 
 </body>
 </html>
